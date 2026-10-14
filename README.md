@@ -14,6 +14,22 @@
 
 ---
 
+## 📸 Application Screenshots
+
+| Citizen Home & SOS | Ghaziabad Safety Heatmap | Report Unsafe Location |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/01_home_sos.png" width="230"/> | <img src="docs/screenshots/02_safety_map.png" width="230"/> | <img src="docs/screenshots/03_report_spot.png" width="230"/> |
+
+| Safe Trip Sharing | Live SOS Active Beacon | Police Live SOS Feed |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/04_trip_sharing.png" width="230"/> | <img src="docs/screenshots/05_sos_active.png" width="230"/> | <img src="docs/screenshots/06_officer_feed.png" width="230"/> |
+
+| Nearest Patrol Dispatch | District Safety Analytics |
+| :---: | :---: |
+| <img src="docs/screenshots/07_patrol_dispatch.png" width="230"/> | <img src="docs/screenshots/08_analytics.png" width="230"/> |
+
+---
+
 ## 🚀 Key Features
 
 ### 1. Citizen Safety Hub

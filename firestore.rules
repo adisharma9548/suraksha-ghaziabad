@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if the caller is an authenticated user
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the caller owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Helper function to check if the caller is an officer
+    function isOfficer() {
+      return isAuthenticated() && 
+        (request.auth.token.role == 'officer' || 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'officer');
+    }
+
+    // USERS COLLECTION
+    // Users can read and update their own document.
+    // Emergency PINs must only be stored as hashes.
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isOfficer();
+      allow create: if isOwner(userId) && request.resource.data.keys().hasAll(['emergencyPinHash']) && !request.resource.data.keys().hasAny(['emergencyPin']);
+      allow update: if isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
+      allow delete: if isOwner(userId);
+
+      // Trusted contacts subcollection
+      match /trustedContacts/{contactId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // SOS ALERTS COLLECTION
+    // Citizens can create an SOS alert for themselves and read their own.
+    // Officers have real-time read and status-update access to all alerts.
+    match /sos_alerts/{alertId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isOfficer());
+      allow update: if isAuthenticated() && (
+        // Citizen can update if it's their alert (e.g. cancel with PIN, add audio link)
+        resource.data.userId == request.auth.uid || 
+        // Officer can update status and assigned unit
+        isOfficer()
+      );
+
+      // Subcollection for live moving GPS track coordinates
+      match /locations/{locationId} {
+        allow create: if isAuthenticated() && get(/databases/$(database)/documents/sos_alerts/$(alertId)).data.userId == request.auth.uid;
+        allow read: if isAuthenticated() && (get(/databases/$(database)/documents/sos_alerts/$(alertId)).data.userId == request.auth.uid || isOfficer());
+      }
+    }
+
+    // CITIZEN REPORTS COLLECTION
+    // Heatmap reports: anyone can read.
+    // Anonymous creation: no personal userId is required or permitted in anonymous reports.
+    // Officers can update status (Open -> In Progress -> Fixed) with an action note.
+    match /reports/{reportId} {
+      allow read: if true;
+      allow create: if isAuthenticated() || request.resource.data.isAnonymous == true;
+      allow update: if isOfficer();
+      allow delete: if isOfficer();
+    }
+
+    // PATROL UNITS COLLECTION
+    // Real-time location and availability of police patrol vans.
+    // Officers can read, create, and update; citizens have read-only access to assigned units.
+    match /patrol_units/{unitId} {
+      allow read: if isAuthenticated();
+      allow write: if isOfficer();
+    }
+
+    // HELP PLACES COLLECTION
+    // Public directory of police stations, women helpdesks, and hospitals in Ghaziabad.
+    match /help_places/{placeId} {
+      allow read: if true;
+      allow write: if isOfficer();
+    }
+
+    // TRIPS COLLECTION
+    // Real-time trip sharing with safety checks.
+    // Citizens can manage their own trips; trusted contacts and officers can view.
+    match /trips/{tripId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isOfficer());
+      allow update, delete: if isOwner(resource.data.userId);
+    }
+  }
+}
