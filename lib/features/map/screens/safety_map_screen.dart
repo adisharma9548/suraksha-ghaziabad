@@ -73,20 +73,20 @@ class _SafetyMapScreenState extends ConsumerState<SafetyMapScreen> {
   @override
   Widget build(BuildContext context) {
     final reportsAsync = ref.watch(allReportsStreamProvider);
+    final allReports = reportsAsync.value ?? [];
+    final filteredReports = allReports.where((r) {
+      final matchCat =
+          _selectedCategory == 'All' || r.category == _selectedCategory;
+      final matchStatus =
+          _selectedStatus == 'All' || r.status == _selectedStatus;
+      return matchCat && matchStatus;
+    }).toList();
 
     return Scaffold(
       body: Stack(
         children: [
           reportsAsync.when(
-            data: (allReports) {
-              final filteredReports = allReports.where((r) {
-                final matchCat =
-                    _selectedCategory == 'All' || r.category == _selectedCategory;
-                final matchStatus =
-                    _selectedStatus == 'All' || r.status == _selectedStatus;
-                return matchCat && matchStatus;
-              }).toList();
-
+            data: (_) {
               return FlutterMap(
                 mapController: _mapController,
                 options: MapOptions(
@@ -293,6 +293,30 @@ class _SafetyMapScreenState extends ConsumerState<SafetyMapScreen> {
                       },
                     ),
                   ),
+
+                  if (filteredReports.isEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.95),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black12, blurRadius: 4),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.info_outline, size: 16, color: AppColors.primaryPurple),
+                          SizedBox(width: 6),
+                          Text(
+                            'No reports in this category yet. Area safe or unflagged.',
+                            style: TextStyle(fontSize: 12, color: AppColors.textPrimaryLight),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),

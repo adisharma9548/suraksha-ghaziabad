@@ -76,11 +76,10 @@ class AppLocalizations {
   String get enterOtp => isHindi ? 'OTP दर्ज करें' : 'Enter 6-digit OTP';
   String get otpSentTo => isHindi ? 'OTP भेजा गया:' : 'OTP sent to:';
   String get verifyAndLogin => isHindi ? 'सत्यापित करें और लॉगिन करें' : 'Verify & Login';
-  String get mockOtpHint => isHindi ? 'डेमो OTP: 123456' : 'Demo Mode OTP: 123456';
   String get officerLoginLink => isHindi ? 'पुलिस / अधिकारी लॉगिन' : 'Police Officer Login';
   String get officerPortal => isHindi ? 'पुलिस नियंत्रण कक्ष' : 'Police Officer Portal';
-  String get officerCode => isHindi ? 'अधिकारी कोड (उदा. OFFICER01)' : 'Officer Code (e.g. OFFICER01)';
-  String get officerPin => isHindi ? 'अधिकारी पिन (उदा. 1234)' : 'Officer PIN (e.g. 1234)';
+  String get officerCode => isHindi ? 'अधिकारी कोड' : 'Officer Identification Code';
+  String get officerPin => isHindi ? 'अधिकारी पिन' : 'Officer Access PIN';
   String get loginAsOfficer => isHindi ? 'अधिकारी के रूप में लॉगिन करें' : 'Login as Officer';
 
   // Profile Setup
@@ -129,7 +128,6 @@ class AppLocalizations {
   String get statusPoliceNotified => isHindi ? 'पुलिस नियंत्रण कक्ष को सूचित किया गया' : 'Police Control Room Notified';
   String get statusHelpAssigned => isHindi ? 'गश्ती दल (Patrol Unit) रवाना' : 'Patrol Unit Dispatched';
   String get statusResolved => isHindi ? 'स्थिति नियंत्रित / समाधान पूर्ण' : 'Situation Resolved';
-  String get simulateOfficerResponse => isHindi ? 'अधिकारी प्रतिक्रिया अनुकरण (Demo)' : 'Simulate Police Response (Demo)';
 
   // Safety Map Screen
   String get safetyHeatmapTitle => isHindi ? 'ग़ाज़ियाबाद सुरक्षा नक्शा' : 'Ghaziabad Safety Heatmap';
@@ -194,10 +192,6 @@ class AppLocalizations {
   String get shakeTriggerDesc => isHindi
       ? 'फोन को 3 बार तेज़ी से हिलाने पर स्वतः SOS सक्रिय हो जाता है।'
       : 'Shake phone 3 times in danger to instantly trigger SOS.';
-  String get demoModeTitle => isHindi ? 'डेमो मोड (Demo Mode)' : 'Demo Mode';
-  String get demoModeDesc => isHindi
-      ? 'वास्तविक SMS या 112 अलर्ट भेजे बिना सभी सुविधाओं का परीक्षण करें।'
-      : 'Safely test and demonstrate all features without sending real SMS or alerts.';
   String get privacyPolicy => isHindi ? 'गोपनीयता नीति' : 'Privacy Policy';
   String get aboutApp => isHindi ? 'ऐप के बारे में' : 'About App';
   String get deleteMyData => isHindi ? 'मेरा डेटा हटाएं' : 'Delete My Data';

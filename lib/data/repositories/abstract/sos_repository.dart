@@ -30,5 +30,4 @@ abstract class SosRepository {
     required String unitName,
     required String officerPhone,
   });
-  Future<void> simulateOfficerProgression(String alertId);
 }

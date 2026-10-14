@@ -45,6 +45,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
-  assets:
-    - assets/data/ghaziabad_seed_data.json

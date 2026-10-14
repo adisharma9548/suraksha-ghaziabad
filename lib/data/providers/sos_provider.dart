@@ -135,12 +135,6 @@ class SosNotifier extends StateNotifier<SosState> {
     }
   }
 
-  Future<void> simulateOfficerResponse() async {
-    final activeAlert = state.activeAlert;
-    if (activeAlert == null) return;
-    await _ref.read(sosRepositoryProvider).simulateOfficerProgression(activeAlert.id);
-  }
-
   Future<void> _sendFallbackSms(double lat, double lng, String name) async {
     try {
       final contacts = await _ref.read(authRepositoryProvider).getTrustedContacts();

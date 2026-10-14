@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../data/providers/sos_provider.dart';
-import '../../../data/providers/settings_provider.dart';
 import '../widgets/pin_verify_dialog.dart';
 
 class SosActiveScreen extends ConsumerWidget {
@@ -32,7 +31,6 @@ class SosActiveScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final sosState = ref.watch(sosProvider);
     final alert = sosState.activeAlert;
-    final isDemoMode = ref.watch(settingsProvider).isDemoMode;
 
     final status = alert?.status ?? 'triggered';
     final isResolved = status == 'resolved';
@@ -218,10 +216,10 @@ class SosActiveScreen extends ConsumerWidget {
                     _StatusStep(
                       stepNumber: 3,
                       title: isAssigned
-                          ? 'Help is on the way: ${alert?.assignedUnitName ?? 'Cheetah-12'}'
+                          ? 'Help is on the way: ${alert?.assignedUnitName ?? 'Assigned Unit'}'
                           : l10n.statusHelpAssigned,
                       subtitle: isAssigned
-                          ? 'Officer contact: ${alert?.assignedOfficerPhone ?? '+91-9871023401'}'
+                          ? 'Officer contact: ${alert?.assignedOfficerPhone ?? 'Assigned Officer'}'
                           : 'Nearest patrol vehicle assigned to your coordinates',
                       isCompleted: isAssigned || isResolved,
                       isCurrent: status == 'assigned',
@@ -230,66 +228,10 @@ class SosActiveScreen extends ConsumerWidget {
                     _StatusStep(
                       stepNumber: 4,
                       title: l10n.statusResolved,
-                      subtitle: 'Safety verified and logged in district heatmap',
+                      subtitle: 'Safety verified and logged in district control record',
                       isCompleted: isResolved,
                       isCurrent: isResolved,
                     ),
-
-                    // Demo Mode Response Simulation Button
-                    if (isDemoMode && !isResolved) ...[
-                      const SizedBox(height: 24),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryPurpleSurface,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppColors.primaryPurple.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: const [
-                                Icon(Icons.smart_toy_rounded,
-                                    color: AppColors.primaryPurple, size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Pitch Demo Control',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primaryPurpleDark,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Advance through the response lifecycle stages to demonstrate control room dispatch & unit arrival.',
-                              style: TextStyle(
-                                  fontSize: 12, color: AppColors.textSecondaryLight),
-                            ),
-                            const SizedBox(height: 12),
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primaryPurple,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 10),
-                                minimumSize: const Size(double.infinity, 44),
-                              ),
-                              icon: const Icon(Icons.fast_forward_rounded, size: 18),
-                              label: Text(l10n.simulateOfficerResponse),
-                              onPressed: () {
-                                ref
-                                    .read(sosProvider.notifier)
-                                    .simulateOfficerResponse();
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),

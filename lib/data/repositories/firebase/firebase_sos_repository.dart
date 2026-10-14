@@ -268,11 +268,6 @@ class FirebaseSosRepository implements SosRepository {
     }
   }
 
-  @override
-  Future<void> simulateOfficerProgression(String alertId) async {
-    // In live Firebase architecture, officer updates are driven by the officer dashboard.
-  }
-
   void _notifyAlertChange(SosAlertModel alert) {
     if (_alertControllers.containsKey(alert.id)) {
       _alertControllers[alert.id]?.add(alert);

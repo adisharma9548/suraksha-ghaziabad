@@ -133,6 +133,25 @@ class HelpPlaceCard extends StatelessWidget {
                 height: 1.3,
               ),
             ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.verified_user_rounded, size: 13, color: AppColors.safeGreen),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Verified • Source: ${place.source}${place.verifiedAt != null ? ' (${place.verifiedAt!.day}/${place.verifiedAt!.month}/${place.verifiedAt!.year})' : ''}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.safeGreen,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 14),
             Row(
               children: [

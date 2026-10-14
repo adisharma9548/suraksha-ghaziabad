@@ -191,41 +191,6 @@ class ProfileSettingsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
 
-            // Pitch & Demo Controls
-            const Text(
-              'Demo & Innovation Challenge Mode',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textSecondaryLight,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            Card(
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    secondary: const Icon(Icons.science_rounded, color: AppColors.warningAmberDark),
-                    title: Text(l10n.demoModeTitle),
-                    subtitle: Text(l10n.demoModeDesc, style: const TextStyle(fontSize: 11)),
-                    value: settings.isDemoMode,
-                    activeColor: AppColors.warningAmberDark,
-                    onChanged: (val) => settingsNotifier.toggleDemoMode(val),
-                  ),
-                  const Divider(height: 1, indent: 56),
-                  ListTile(
-                    leading: const Icon(Icons.local_police_rounded, color: AppColors.policeNavy),
-                    title: const Text('Police Officer Command Portal'),
-                    subtitle: const Text('Switch to Control Room feed (OFFICER01 / 1234)', style: TextStyle(fontSize: 11)),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                    onTap: () => context.go('/officer'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
             // Preferences & Privacy
             const Text(
               'Preferences & Legal',

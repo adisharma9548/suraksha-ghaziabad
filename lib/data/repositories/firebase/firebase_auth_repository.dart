@@ -102,7 +102,7 @@ class FirebaseAuthRepository implements AuthRepository {
             phone: phone,
             role: 'citizen',
             language: 'en',
-            emergencyPinHash: HashUtil.hashPin('1234'),
+            emergencyPinHash: '',
             createdAt: DateTime.now(),
           );
       _cachedUser = user;
@@ -134,11 +134,11 @@ class FirebaseAuthRepository implements AuthRepository {
 
     final newUser = UserModel(
       id: uid,
-      name: 'Citizen',
+      name: '',
       phone: phone,
       role: 'citizen',
       language: 'en',
-      emergencyPinHash: HashUtil.hashPin('1234'),
+      emergencyPinHash: '', // PIN must be explicitly configured by the user
       createdAt: DateTime.now(),
       hasConsented: true,
     );
@@ -151,21 +151,13 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<UserModel> officerLogin(String code, String pin) async {
     if (!_isFirebaseAvailable) {
-      if (code.trim().toUpperCase() == 'OFFICER01' && pin.trim() == '1234') {
-        final officer = UserModel(
-          id: 'officer_001',
-          name: 'Insp. Rakesh Kumar',
-          phone: '+919454403000',
-          role: 'officer',
-          language: 'en',
-          emergencyPinHash: HashUtil.hashPin('1234'),
-          createdAt: DateTime.now(),
-          hasConsented: true,
-        );
-        _cachedUser = officer;
-        return officer;
+      // In offline/test mode without Firebase, query must be explicitly mocked
+      if (_cachedUser != null &&
+          _cachedUser!.role == 'officer' &&
+          HashUtil.verifyPin(pin, _cachedUser!.emergencyPinHash)) {
+        return _cachedUser!;
       }
-      throw Exception('Invalid Officer Code or PIN');
+      throw Exception('Invalid Officer credentials. Official administrative registration required.');
     }
 
     // Query Firestore for officer credential

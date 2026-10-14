@@ -28,6 +28,27 @@ class OfficerPatrolUnitsScreen extends ConsumerWidget {
       body: SafeArea(
         child: unitsAsync.when(
           data: (units) {
+            if (units.isEmpty) {
+              return const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.directions_car_outlined, size: 56, color: AppColors.policeNavy),
+                    SizedBox(height: 16),
+                    Text(
+                      'No Patrol Units Registered',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'No active patrol units in the district roster yet.',
+                      style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
+                    ),
+                  ],
+                ),
+              );
+            }
+
             return ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: units.length,

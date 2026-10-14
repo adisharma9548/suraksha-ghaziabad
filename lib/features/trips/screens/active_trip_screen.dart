@@ -129,7 +129,7 @@ class ActiveTripScreen extends ConsumerWidget {
 
                     Row(
                       children: [
-                        // Manual trigger "Check-in" button for testing
+                        // Manual Check-in button
                         Expanded(
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(
@@ -138,9 +138,16 @@ class ActiveTripScreen extends ConsumerWidget {
                               minimumSize: const Size(0, 46),
                             ),
                             onPressed: () {
-                              ref.read(tripProvider.notifier).promptSafetyCheck();
+                              ref.read(tripProvider.notifier).confirmSafe();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Safety check confirmed. Timestamp refreshed.'),
+                                  backgroundColor: AppColors.safeGreen,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
                             },
-                            child: const Text('Simulate Stop Check', style: TextStyle(fontSize: 12)),
+                            child: const Text('Check-In OK', style: TextStyle(fontSize: 12)),
                           ),
                         ),
                         const SizedBox(width: 12),

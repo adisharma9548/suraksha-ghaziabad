@@ -15,30 +15,15 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
-  final _nameController = TextEditingController(text: 'Aditi Sharma');
-  final _pinController = TextEditingController(text: '1234');
-  final _confirmPinController = TextEditingController(text: '1234');
+  final _nameController = TextEditingController();
+  final _pinController = TextEditingController();
+  final _confirmPinController = TextEditingController();
   final List<TrustedContactModel> _contacts = [];
   final _uuid = const Uuid();
 
   @override
   void initState() {
     super.initState();
-    // Default 2 emergency contacts seeded for convenience
-    _contacts.add(TrustedContactModel(
-      id: _uuid.v4(),
-      userId: '',
-      name: 'Maa (Emergency)',
-      phone: '+919876543210',
-      relationship: 'Mother',
-    ));
-    _contacts.add(TrustedContactModel(
-      id: _uuid.v4(),
-      userId: '',
-      name: 'Bhaiya (Emergency)',
-      phone: '+919876543211',
-      relationship: 'Brother',
-    ));
   }
 
   @override
@@ -286,6 +271,29 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 ],
               ),
               const SizedBox(height: 8),
+
+              if (_contacts.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.dividerLight),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.contact_phone_outlined, color: AppColors.textSecondaryLight),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'No emergency contacts added yet. Add 1 to 5 contacts (parents, family, trusted friends) to notify during an SOS.',
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
               ..._contacts.asMap().entries.map((entry) {
                 final idx = entry.key;

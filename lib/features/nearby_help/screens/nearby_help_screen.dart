@@ -58,7 +58,28 @@ class NearbyHelpScreen extends ConsumerWidget {
               child: placesAsync.when(
                 data: (places) {
                   if (places.isEmpty) {
-                    return const Center(child: Text('No emergency places found.'));
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.local_hospital_outlined, size: 56, color: AppColors.primaryPurple),
+                            SizedBox(height: 16),
+                            Text(
+                              'No Emergency Places Loaded',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Help places (police stations, pink booths, hospitals) are imported from the verified district directory.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight, height: 1.4),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
                   }
 
                   return ListView.builder(

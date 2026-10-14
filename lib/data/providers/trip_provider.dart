@@ -77,21 +77,9 @@ class TripNotifier extends StateNotifier<TripState> {
         activeTrip: trip,
         isTracking: true,
       );
-
-      // Simulate a periodic safety check 20 seconds into the trip (for demo pitch)
-      _scheduleDemoSafetyCheck();
     } catch (e) {
       state = state.copyWith(errorMessage: e.toString());
     }
-  }
-
-  void _scheduleDemoSafetyCheck() {
-    _safetyCheckSimulationTimer?.cancel();
-    _safetyCheckSimulationTimer = Timer(const Duration(seconds: 15), () {
-      if (state.hasActiveTrip) {
-        promptSafetyCheck();
-      }
-    });
   }
 
   void promptSafetyCheck() {

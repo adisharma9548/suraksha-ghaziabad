@@ -42,36 +42,16 @@ class MockAuthRepository implements AuthRepository {
 
     final newUser = UserModel(
       id: _uuid.v4(),
-      name: 'Aditi Sharma',
+      name: '',
       phone: phone,
       role: 'citizen',
       language: _prefs.getString(AppConstants.keySelectedLanguage) ?? 'en',
-      emergencyPinHash: HashUtil.hashPin('1234'),
+      emergencyPinHash: '', // PIN must be explicitly configured
       createdAt: DateTime.now(),
       hasConsented: _prefs.getBool(AppConstants.keyConsentGiven) ?? false,
     );
 
     await _saveUser(newUser);
-
-    // Seed default emergency contacts if none exist
-    final contacts = await getTrustedContacts();
-    if (contacts.isEmpty) {
-      await addTrustedContact(TrustedContactModel(
-        id: _uuid.v4(),
-        userId: newUser.id,
-        name: 'Maa (Emergency)',
-        phone: '+919876543210',
-        relationship: 'Mother',
-      ));
-      await addTrustedContact(TrustedContactModel(
-        id: _uuid.v4(),
-        userId: newUser.id,
-        name: 'Bhaiya (Emergency)',
-        phone: '+919876543211',
-        relationship: 'Brother',
-      ));
-    }
-
     return newUser;
   }
 
@@ -79,24 +59,16 @@ class MockAuthRepository implements AuthRepository {
   Future<UserModel> officerLogin(String code, String pin) async {
     await Future.delayed(const Duration(milliseconds: 700));
 
-    if (code.trim().toUpperCase() == AppConstants.demoOfficerCode &&
-        pin.trim() == AppConstants.demoOfficerPin) {
-      final officerUser = UserModel(
-        id: 'officer_001',
-        name: AppConstants.demoOfficerName,
-        phone: '+919454403000',
-        role: 'officer',
-        language: _prefs.getString(AppConstants.keySelectedLanguage) ?? 'en',
-        emergencyPinHash: HashUtil.hashPin('1234'),
-        createdAt: DateTime.now(),
-        hasConsented: true,
-      );
-
-      await _saveUser(officerUser);
-      return officerUser;
+    final rawOfficer = _prefs.getString('officer_credentials_$code');
+    if (rawOfficer != null) {
+      final officer = UserModel.fromJson(jsonDecode(rawOfficer) as Map<String, dynamic>);
+      if (HashUtil.verifyPin(pin, officer.emergencyPinHash)) {
+        await _saveUser(officer);
+        return officer;
+      }
     }
 
-    throw Exception('Invalid Officer Code or PIN. Use OFFICER01 / 1234');
+    throw Exception('Invalid Officer Code or PIN. Please enter authorized credentials.');
   }
 
   @override

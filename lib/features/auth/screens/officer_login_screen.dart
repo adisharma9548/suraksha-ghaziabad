@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/l10n/app_localizations.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../data/providers/auth_provider.dart';
 
 class OfficerLoginScreen extends ConsumerStatefulWidget {
@@ -14,8 +13,8 @@ class OfficerLoginScreen extends ConsumerStatefulWidget {
 }
 
 class _OfficerLoginScreenState extends ConsumerState<OfficerLoginScreen> {
-  final _codeController = TextEditingController(text: AppConstants.demoOfficerCode);
-  final _pinController = TextEditingController(text: AppConstants.demoOfficerPin);
+  final _codeController = TextEditingController();
+  final _pinController = TextEditingController();
 
   @override
   void dispose() {
@@ -28,12 +27,19 @@ class _OfficerLoginScreenState extends ConsumerState<OfficerLoginScreen> {
     final code = _codeController.text.trim();
     final pin = _pinController.text.trim();
 
+    if (code.isEmpty || pin.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your Officer Code and PIN')),
+      );
+      return;
+    }
+
     final success =
         await ref.read(authProvider.notifier).officerLogin(code, pin);
     if (success && mounted) {
       context.go('/officer');
     } else if (mounted) {
-      final error = ref.read(authProvider).errorMessage ?? 'Login failed';
+      final error = ref.read(authProvider).errorMessage ?? 'Invalid officer credentials';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(error),
@@ -67,7 +73,7 @@ class _OfficerLoginScreenState extends ConsumerState<OfficerLoginScreen> {
                 child: Container(
                   width: 90,
                   height: 90,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AppColors.policeNavySurface,
                     shape: BoxShape.circle,
                   ),
@@ -99,7 +105,7 @@ class _OfficerLoginScreenState extends ConsumerState<OfficerLoginScreen> {
               ),
               const SizedBox(height: 28),
 
-              // Demo credentials banner
+              // Security notice banner
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -109,14 +115,14 @@ class _OfficerLoginScreenState extends ConsumerState<OfficerLoginScreen> {
                     color: AppColors.policeNavy.withOpacity(0.3),
                   ),
                 ),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(Icons.info_outline, color: AppColors.policeNavy, size: 20),
-                    const SizedBox(width: 10),
+                    Icon(Icons.security_rounded, color: AppColors.policeNavy, size: 20),
+                    SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Demo Credentials:\nCode: ${AppConstants.demoOfficerCode} | PIN: ${AppConstants.demoOfficerPin}',
-                        style: const TextStyle(
+                        'Restricted Access: Authorized credentials issued by Ghaziabad District Police Administration.',
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: AppColors.policeNavy,
@@ -142,7 +148,7 @@ class _OfficerLoginScreenState extends ConsumerState<OfficerLoginScreen> {
                 controller: _pinController,
                 obscureText: true,
                 keyboardType: TextInputType.number,
-                maxLength: 4,
+                maxLength: 6,
                 decoration: InputDecoration(
                   labelText: l10n.officerPin,
                   prefixIcon: const Icon(Icons.lock_rounded, color: AppColors.policeNavy),

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/l10n/app_localizations.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../data/providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -14,7 +13,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _phoneController = TextEditingController(text: '9876543210');
+  final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
   bool _otpSent = false;
 
@@ -38,13 +37,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (success && mounted) {
       setState(() {
         _otpSent = true;
-        _otpController.text = AppConstants.mockOtp; // Auto-fill for friction-free demo
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'OTP sent to +91 $phone (Demo OTP: ${AppConstants.mockOtp})',
-          ),
+          content: Text('SMS OTP sent to +91 $phone'),
           backgroundColor: AppColors.safeGreen,
         ),
       );
@@ -166,7 +162,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   decoration: InputDecoration(
                     labelText: l10n.enterOtp,
-                    helperText: l10n.mockOtpHint,
                     counterText: '',
                   ),
                 ),
@@ -185,6 +180,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: () {
                     setState(() {
                       _otpSent = false;
+                      _otpController.clear();
                     });
                   },
                   child: const Text('Change Phone Number'),

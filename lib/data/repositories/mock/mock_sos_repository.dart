@@ -177,26 +177,6 @@ class MockSosRepository implements SosRepository {
     }
   }
 
-  @override
-  Future<void> simulateOfficerProgression(String alertId) async {
-    final index = _alerts.indexWhere((a) => a.id == alertId);
-    if (index == -1) return;
-
-    final currentStatus = _alerts[index].status;
-    if (currentStatus == 'triggered') {
-      await updateAlertStatus(alertId: alertId, status: 'police_notified');
-    } else if (currentStatus == 'police_notified') {
-      await assignPatrolUnit(
-        alertId: alertId,
-        unitId: 'unit_01',
-        unitName: 'Cheetah-12 (Indirapuram PCR)',
-        officerPhone: '+91-9871023401',
-      );
-    } else if (currentStatus == 'assigned') {
-      await updateAlertStatus(alertId: alertId, status: 'resolved');
-    }
-  }
-
   void _notifyChanges(SosAlertModel alert) {
     _alertControllers[alert.id]?.add(alert);
     _allAlertsController.add(List.unmodifiable(_alerts));
