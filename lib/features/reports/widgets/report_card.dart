@@ -71,6 +71,52 @@ class ReportCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(
+                    report.routedAuthority == 'NAGAR_NIGAM_GHAZIABAD'
+                        ? Icons.account_balance_rounded
+                        : Icons.local_police_rounded,
+                    size: 13,
+                    color: AppColors.policeNavy,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    report.routedAuthorityLabel,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.policeNavy,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryPurpleSurface,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.check_circle_rounded,
+                            size: 11, color: AppColors.primaryPurple),
+                        const SizedBox(width: 4),
+                        Text(
+                          report.acknowledgementStatus,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryPurple,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
               Text(
                 report.locationName,
                 style: const TextStyle(

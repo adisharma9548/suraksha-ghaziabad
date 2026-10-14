@@ -17,6 +17,7 @@ class OfficerReportsAdminScreen extends ConsumerStatefulWidget {
 class _OfficerReportsAdminScreenState
     extends ConsumerState<OfficerReportsAdminScreen> {
   String _selectedStatus = 'All';
+  String _selectedAuthority = 'All';
 
   void _openUpdateDialog(ReportModel report) {
     showDialog(
@@ -36,9 +37,39 @@ class _OfficerReportsAdminScreenState
       body: SafeArea(
         child: Column(
           children: [
+            // Authority Filter Chips
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Row(
+                children: [
+                  ('All Authorities', 'All'),
+                  ('🏛️ Nagar Nigam', 'NAGAR_NIGAM_GHAZIABAD'),
+                  ('👮 UP Police', 'UP_POLICE'),
+                ].map((item) {
+                  final isSelected = item.$2 == _selectedAuthority;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      label: Text(item.$1),
+                      selected: isSelected,
+                      selectedColor: AppColors.policeNavySurface,
+                      checkmarkColor: AppColors.policeNavy,
+                      labelStyle: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected ? AppColors.policeNavy : AppColors.textPrimaryLight,
+                      ),
+                      onSelected: (_) => setState(() => _selectedAuthority = item.$2),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
             // Status Filter Chips
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(
                 children: ['All', 'Open', 'In progress', 'Fixed'].map((status) {
                   final isSelected = status == _selectedStatus;
@@ -47,12 +78,12 @@ class _OfficerReportsAdminScreenState
                     child: FilterChip(
                       label: Text(status),
                       selected: isSelected,
-                      selectedColor: AppColors.policeNavySurface,
-                      checkmarkColor: AppColors.policeNavy,
+                      selectedColor: AppColors.primaryPurpleSurface,
+                      checkmarkColor: AppColors.primaryPurple,
                       labelStyle: TextStyle(
                         fontSize: 12,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected ? AppColors.policeNavy : AppColors.textPrimaryLight,
+                        color: isSelected ? AppColors.primaryPurple : AppColors.textPrimaryLight,
                       ),
                       onSelected: (val) {
                         setState(() => _selectedStatus = status);
@@ -68,7 +99,11 @@ class _OfficerReportsAdminScreenState
               child: reportsAsync.when(
                 data: (reports) {
                   final filtered = reports.where((r) {
-                    return _selectedStatus == 'All' || r.status == _selectedStatus;
+                    final matchesStatus =
+                        _selectedStatus == 'All' || r.status == _selectedStatus;
+                    final matchesAuth = _selectedAuthority == 'All' ||
+                        r.routedAuthority == _selectedAuthority;
+                    return matchesStatus && matchesAuth;
                   }).toList();
 
                   if (filtered.isEmpty) {

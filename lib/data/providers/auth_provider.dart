@@ -92,6 +92,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> saveProfile({
     required String name,
     required String pin,
+    String? duressPin,
     required List<TrustedContactModel> contacts,
   }) async {
     state = state.copyWith(isLoading: true);
@@ -99,6 +100,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _ref.read(authRepositoryProvider).saveProfile(
             name: name,
             pin: pin,
+            duressPin: duressPin,
             contacts: contacts,
           );
       final updatedUser = await _ref.read(authRepositoryProvider).getCurrentUser();
@@ -107,6 +109,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
+  }
+
+  Future<void> changeDuressPin(String newDuressPin) async {
+    await _ref.read(authRepositoryProvider).changeDuressPin(newDuressPin);
+    final updatedUser = await _ref.read(authRepositoryProvider).getCurrentUser();
+    state = state.copyWith(user: updatedUser);
   }
 
   Future<void> deleteMyData() async {

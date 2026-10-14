@@ -196,6 +196,7 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<void> saveProfile({
     required String name,
     required String pin,
+    String? duressPin,
     required List<TrustedContactModel> contacts,
   }) async {
     final user = await getCurrentUser();
@@ -203,6 +204,9 @@ class FirebaseAuthRepository implements AuthRepository {
       final updated = user.copyWith(
         name: name,
         emergencyPinHash: HashUtil.hashPin(pin),
+        duressPinHash: (duressPin != null && duressPin.isNotEmpty)
+            ? HashUtil.hashPin(duressPin)
+            : user.duressPinHash,
       );
       _cachedUser = updated;
 
@@ -262,6 +266,31 @@ class FirebaseAuthRepository implements AuthRepository {
     if (_isFirebaseAvailable) {
       await _effectiveFirestore.collection('users').doc(user.id).update({
         'emergencyPinHash': HashUtil.hashPin(newPin),
+      });
+    }
+  }
+
+  @override
+  Future<bool> verifyDuressPin(String pin) async {
+    final user = await getCurrentUser();
+    if (user == null || user.duressPinHash.isEmpty) {
+      return false;
+    }
+    return HashUtil.verifyPin(pin, user.duressPinHash);
+  }
+
+  @override
+  Future<void> changeDuressPin(String newDuressPin) async {
+    final user = await getCurrentUser();
+    if (user == null) return;
+    final updated = user.copyWith(
+      duressPinHash: HashUtil.hashPin(newDuressPin),
+    );
+    _cachedUser = updated;
+
+    if (_isFirebaseAvailable) {
+      await _effectiveFirestore.collection('users').doc(user.id).update({
+        'duressPinHash': HashUtil.hashPin(newDuressPin),
       });
     }
   }

@@ -5,6 +5,7 @@ class UserModel {
   final String role; // 'citizen' or 'officer'
   final String language; // 'en' or 'hi'
   final String emergencyPinHash;
+  final String duressPinHash;
   final DateTime createdAt;
   final bool hasConsented;
 
@@ -15,6 +16,7 @@ class UserModel {
     required this.role,
     this.language = 'en',
     required this.emergencyPinHash,
+    this.duressPinHash = '',
     required this.createdAt,
     this.hasConsented = true,
   });
@@ -28,6 +30,7 @@ class UserModel {
     String? role,
     String? language,
     String? emergencyPinHash,
+    String? duressPinHash,
     DateTime? createdAt,
     bool? hasConsented,
   }) {
@@ -38,6 +41,7 @@ class UserModel {
       role: role ?? this.role,
       language: language ?? this.language,
       emergencyPinHash: emergencyPinHash ?? this.emergencyPinHash,
+      duressPinHash: duressPinHash ?? this.duressPinHash,
       createdAt: createdAt ?? this.createdAt,
       hasConsented: hasConsented ?? this.hasConsented,
     );
@@ -51,6 +55,7 @@ class UserModel {
       'role': role,
       'language': language,
       'emergencyPinHash': emergencyPinHash,
+      'duressPinHash': duressPinHash,
       'createdAt': createdAt.toIso8601String(),
       'hasConsented': hasConsented,
     };
@@ -64,6 +69,7 @@ class UserModel {
       role: json['role'] as String? ?? 'citizen',
       language: json['language'] as String? ?? 'en',
       emergencyPinHash: json['emergencyPinHash'] as String? ?? '',
+      duressPinHash: json['duressPinHash'] as String? ?? '',
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),

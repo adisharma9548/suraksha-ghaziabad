@@ -1,7 +1,9 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/providers/report_provider.dart';
+import '../../../data/providers/sos_provider.dart';
 
 class OfficerAnalyticsScreen extends ConsumerWidget {
   const OfficerAnalyticsScreen({super.key});
@@ -9,30 +11,114 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reportsAsync = ref.watch(allReportsStreamProvider);
+    final alertsAsync = ref.watch(allOfficerAlertsStreamProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('District Safety Analytics', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'District Safety Analytics',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       body: SafeArea(
         child: reportsAsync.when(
           data: (reports) {
             final total = reports.length;
             final resolved = reports.where((r) => r.status == 'Fixed').length;
-            final inProgress = reports.where((r) => r.status == 'In progress').length;
+            final inProgress =
+                reports.where((r) => r.status == 'In progress').length;
             final open = reports.where((r) => r.status == 'Open').length;
 
-            // Category counts
-            final Map<String, int> categoryCounts = {};
-            for (final r in reports) {
-              categoryCounts[r.category] = (categoryCounts[r.category] ?? 0) + 1;
+            // 1. Calculate Real Response Time from SOS alerts timestamps
+            final alerts = alertsAsync.asData?.value ?? [];
+            final responseTimes = alerts
+                .where((a) => a.assignedAt != null)
+                .map((a) => a.assignedAt!.difference(a.startedAt).inSeconds)
+                .where((sec) => sec >= 0)
+                .toList();
+
+            String avgResponseVal = '--';
+            String avgResponseSub = 'No dispatch logs yet';
+            if (responseTimes.isNotEmpty) {
+              final avgSec =
+                  responseTimes.reduce((a, b) => a + b) / responseTimes.length;
+              if (avgSec < 60) {
+                avgResponseVal = '${avgSec.round()} sec';
+              } else {
+                avgResponseVal = '${(avgSec / 60).toStringAsFixed(1)} min';
+              }
+              avgResponseSub = 'From ${responseTimes.length} live dispatches';
+            } else if (alerts.isNotEmpty) {
+              avgResponseVal = 'Pending';
+              avgResponseSub = '${alerts.length} active alerts awaiting unit';
             }
 
-            // Time of day counts
+            // 2. Category counts
+            final Map<String, int> categoryCounts = {};
+            for (final r in reports) {
+              categoryCounts[r.category] =
+                  (categoryCounts[r.category] ?? 0) + 1;
+            }
+
+            // 3. Time of day counts
             final Map<String, int> timeCounts = {};
             for (final r in reports) {
               timeCounts[r.timeOfDay] = (timeCounts[r.timeOfDay] ?? 0) + 1;
             }
+
+            // 4. Time-Decay and Ward-Level Analytics Computation
+            final now = DateTime.now();
+            final Map<String, _WardAnalytics> wardMap = {
+              'Vasundhara Zone (Ward 82)': _WardAnalytics(
+                name: 'Vasundhara Zone (Ward 82)',
+                subAreas: 'Indirapuram, Vaishali, Kaushambi',
+              ),
+              'Mohan Nagar Zone (Ward 64)': _WardAnalytics(
+                name: 'Mohan Nagar Zone (Ward 64)',
+                subAreas: 'Sahibabad, Arthala, Rajendra Nagar',
+              ),
+              'Kavi Nagar Zone (Ward 12)': _WardAnalytics(
+                name: 'Kavi Nagar Zone (Ward 12)',
+                subAreas: 'Raj Nagar, Shastri Nagar, Govindpuram',
+              ),
+              'Vijay Nagar Zone (Ward 28)': _WardAnalytics(
+                name: 'Vijay Nagar Zone (Ward 28)',
+                subAreas: 'Crossings Republik, Pratap Vihar',
+              ),
+              'City Kotwali Zone (Ward 41)': _WardAnalytics(
+                name: 'City Kotwali Zone (Ward 41)',
+                subAreas: 'Ghantaghar, Model Town, Naya Ganj',
+              ),
+            };
+
+            for (final r in reports) {
+              final wardKey = wardMap.containsKey(r.wardName)
+                  ? r.wardName
+                  : 'City Kotwali Zone (Ward 41)';
+              final ward = wardMap[wardKey]!;
+
+              // Time-decay factor: 7-day half-life decay
+              final daysOld = math.max(
+                  0.0, now.difference(r.createdAt).inMinutes / (60 * 24));
+              final decayWeight = 1.0 / (1.0 + (daysOld / 7.0));
+
+              // Fixed issues contribute 20% residual risk; active issues contribute 100%
+              final statusFactor = r.status == 'Fixed' ? 0.2 : 1.0;
+              final weightedScore = r.severity * decayWeight * statusFactor;
+
+              ward.totalReports++;
+              ward.decayWeightedRisk += weightedScore;
+              if (r.status == 'Fixed') ward.resolvedReports++;
+              if (r.routedAuthority == 'NAGAR_NIGAM_GHAZIABAD') {
+                ward.nagarNigamReports++;
+              } else {
+                ward.policeReports++;
+              }
+            }
+
+            final sortedWards = wardMap.values.toList()
+              ..sort((a, b) =>
+                  b.decayWeightedRisk.compareTo(a.decayWeightedRisk));
 
             // Top unsafe zones
             final Map<String, int> zoneCounts = {};
@@ -63,8 +149,8 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
                     Expanded(
                       child: _MetricCard(
                         title: 'Avg Response',
-                        value: '3.4 min',
-                        subtitle: 'SOS-to-Dispatch',
+                        value: avgResponseVal,
+                        subtitle: avgResponseSub,
                         icon: Icons.timer_rounded,
                         color: AppColors.safeGreen,
                       ),
@@ -78,7 +164,8 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
                       child: _MetricCard(
                         title: 'Resolved (Fixed)',
                         value: '$resolved',
-                        subtitle: '${((resolved / (total > 0 ? total : 1)) * 100).round()}% closure rate',
+                        subtitle:
+                            '${((resolved / (total > 0 ? total : 1)) * 100).round()}% closure rate',
                         icon: Icons.verified_rounded,
                         color: AppColors.safeGreen,
                       ),
@@ -88,13 +175,175 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
                       child: _MetricCard(
                         title: 'Open / In Action',
                         value: '${open + inProgress}',
-                        subtitle: 'Active patrols',
+                        subtitle: 'Active patrols / works',
                         icon: Icons.pending_actions_rounded,
                         color: AppColors.warningAmberDark,
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 24),
+
+                // WARD-LEVEL TIME-DECAY RISK ANALYTICS
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Ward-Level Time-Decay Risk',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimaryLight,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryPurpleSurface,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        '7-Day Decay Model',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryPurple,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Recent incidents carry higher weight; resolved issues decay over time.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondaryLight,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...sortedWards.map((w) {
+                  final riskScore = w.decayWeightedRisk;
+                  final Color riskColor;
+                  final String riskLevel;
+                  if (riskScore > 10) {
+                    riskColor = AppColors.sosRed;
+                    riskLevel = 'HIGH RISK';
+                  } else if (riskScore > 4) {
+                    riskColor = AppColors.warningAmberDark;
+                    riskLevel = 'ELEVATED';
+                  } else {
+                    riskColor = AppColors.safeGreen;
+                    riskLevel = 'LOW RISK';
+                  }
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.dividerLight),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                w.name,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimaryLight,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: riskColor.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: riskColor, width: 1),
+                              ),
+                              child: Text(
+                                riskLevel,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: riskColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          w.subAreas,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textHintLight,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Text(
+                              'Decay Score: ${riskScore.toStringAsFixed(1)}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: riskColor,
+                              ),
+                            ),
+                            const Text(' • ',
+                                style: TextStyle(
+                                    color: AppColors.textSecondaryLight)),
+                            Text(
+                              '${w.totalReports} total',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondaryLight,
+                              ),
+                            ),
+                            const Spacer(),
+                            Row(
+                              children: [
+                                const Icon(Icons.account_balance_rounded,
+                                    size: 12, color: AppColors.policeNavy),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '${w.nagarNigamReports}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.policeNavy,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.local_police_rounded,
+                                    size: 12, color: AppColors.sosRed),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '${w.policeReports}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.sosRed,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                }),
                 const SizedBox(height: 24),
 
                 // Reports by Category Chart Section
@@ -122,7 +371,9 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
 
                       Color barColor = AppColors.primaryPurple;
                       if (cat == 'Harassment') barColor = AppColors.sosRed;
-                      if (cat == 'Isolated road') barColor = AppColors.warningAmberDark;
+                      if (cat == 'Isolated road') {
+                        barColor = AppColors.warningAmberDark;
+                      }
                       if (cat == 'Drunk crowd') barColor = Colors.deepOrange;
 
                       return Padding(
@@ -135,11 +386,15 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
                               children: [
                                 Text(
                                   cat,
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600),
                                 ),
                                 Text(
                                   '$count (${(pct * 100).round()}%)',
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -150,7 +405,8 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
                                 value: pct,
                                 minHeight: 8,
                                 backgroundColor: AppColors.dividerLight,
-                                valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(barColor),
                               ),
                             ),
                           ],
@@ -172,7 +428,8 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 Row(
-                  children: ['Morning', 'Afternoon', 'Evening', 'Night'].map((time) {
+                  children:
+                      ['Morning', 'Afternoon', 'Evening', 'Night'].map((time) {
                     final count = timeCounts[time] ?? 0;
                     return Expanded(
                       child: Container(
@@ -261,7 +518,8 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
                         ),
                         title: Text(
                           item.key,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.bold),
                         ),
                         trailing: Container(
                           padding: const EdgeInsets.symmetric(
@@ -297,6 +555,18 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _WardAnalytics {
+  final String name;
+  final String subAreas;
+  int totalReports = 0;
+  int resolvedReports = 0;
+  int nagarNigamReports = 0;
+  int policeReports = 0;
+  double decayWeightedRisk = 0.0;
+
+  _WardAnalytics({required this.name, required this.subAreas});
 }
 
 class _MetricCard extends StatelessWidget {
@@ -338,7 +608,8 @@ class _MetricCard extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondaryLight),
               ),
               Icon(icon, color: color, size: 20),
             ],
@@ -355,7 +626,8 @@ class _MetricCard extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             subtitle,
-            style: const TextStyle(fontSize: 11, color: AppColors.textHintLight),
+            style:
+                const TextStyle(fontSize: 11, color: AppColors.textHintLight),
           ),
         ],
       ),

@@ -51,12 +51,21 @@ class MockReportRepository implements ReportRepository {
     required String reportId,
     required String status,
     required String adminNote,
+    String? acknowledgementStatus,
   }) async {
+    final effectiveAck = acknowledgementStatus ??
+        (status == 'Fixed'
+            ? 'Fixed'
+            : (status == 'In progress'
+                ? 'Action In Progress'
+                : 'Acknowledged by Control Room'));
+
     final index = _reports.indexWhere((r) => r.id == reportId);
     if (index != -1) {
       final updated = _reports[index].copyWith(
         status: status,
         adminNote: adminNote,
+        acknowledgementStatus: effectiveAck,
       );
       _reports[index] = updated;
 

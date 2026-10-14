@@ -9,5 +9,6 @@ abstract class ReportRepository {
     required String reportId,
     required String status,
     required String adminNote,
+    String? acknowledgementStatus,
   });
 }

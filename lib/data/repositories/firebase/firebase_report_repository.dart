@@ -114,12 +114,21 @@ class FirebaseReportRepository implements ReportRepository {
     required String reportId,
     required String status,
     required String adminNote,
+    String? acknowledgementStatus,
   }) async {
+    final effectiveAck = acknowledgementStatus ??
+        (status == 'Fixed'
+            ? 'Fixed'
+            : (status == 'In progress'
+                ? 'Action In Progress'
+                : 'Acknowledged by Control Room'));
+
     final index = _cachedReports.indexWhere((r) => r.id == reportId);
     if (index != -1) {
       _cachedReports[index] = _cachedReports[index].copyWith(
         status: status,
         adminNote: adminNote,
+        acknowledgementStatus: effectiveAck,
       );
     }
 
@@ -128,6 +137,7 @@ class FirebaseReportRepository implements ReportRepository {
         await _reportsCol.doc(reportId).update({
           'status': status,
           'adminNote': adminNote,
+          'acknowledgementStatus': effectiveAck,
         });
       } catch (e) {
         debugPrint('FirebaseReportRepository.updateReportStatus error: $e');

@@ -65,6 +65,9 @@ class _ReportUnsafeSpotScreenState
       return;
     }
 
+    final routedAuth = ReportModel.resolveAuthority(_selectedCategory);
+    final resolvedWard = ReportModel.resolveWard(_lat, _lng, _selectedLocality);
+
     final newReport = ReportModel(
       id: _uuid.v4(),
       category: _selectedCategory,
@@ -77,6 +80,9 @@ class _ReportUnsafeSpotScreenState
       isAnonymous: _isAnonymous,
       severity: _severity,
       timeOfDay: _selectedTimeOfDay,
+      routedAuthority: routedAuth,
+      acknowledgementStatus: 'Delivered to Control Room',
+      wardName: resolvedWard,
     );
 
     final success =
@@ -84,8 +90,8 @@ class _ReportUnsafeSpotScreenState
 
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Report submitted successfully! Added to live district heatmap.'),
+        SnackBar(
+          content: Text('Report submitted & queued to ${newReport.routedAuthorityLabel}! Added to heatmap.'),
           backgroundColor: AppColors.safeGreen,
         ),
       );
@@ -174,6 +180,38 @@ class _ReportUnsafeSpotScreenState
                     },
                   );
                 }).toList(),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.policeNavySurface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.policeNavy.withOpacity(0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      ReportModel.resolveAuthority(_selectedCategory) ==
+                              'NAGAR_NIGAM_GHAZIABAD'
+                          ? Icons.account_balance_rounded
+                          : Icons.local_police_rounded,
+                      size: 18,
+                      color: AppColors.policeNavy,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Target Action Queue: ${ReportModel.resolveAuthority(_selectedCategory) == 'NAGAR_NIGAM_GHAZIABAD' ? 'Nagar Nigam Ghaziabad (Civic / Lighting)' : 'UP Police Ghaziabad (Patrol & Law Enforcement)'}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.policeNavy,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 20),
 

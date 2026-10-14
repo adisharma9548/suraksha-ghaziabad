@@ -22,7 +22,10 @@ class OfficerSosFeedScreen extends ConsumerWidget {
     }
   }
 
-  String _formatStatusLabel(String status) {
+  String _formatStatusLabel(String status, bool isDuress) {
+    if (isDuress || status == 'duress_active') {
+      return '🚨 SILENT DURESS (COERCED)';
+    }
     switch (status) {
       case 'resolved':
         return 'RESOLVED';
@@ -85,8 +88,11 @@ class OfficerSosFeedScreen extends ConsumerWidget {
               itemCount: alerts.length,
               itemBuilder: (context, index) {
                 final alert = alerts[index];
-                final statusColor = _getStatusColor(alert.status);
-                final statusLabel = _formatStatusLabel(alert.status);
+                final statusColor = alert.isDuress
+                    ? AppColors.sosRed
+                    : _getStatusColor(alert.status);
+                final statusLabel =
+                    _formatStatusLabel(alert.status, alert.isDuress);
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -98,6 +104,34 @@ class OfficerSosFeedScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (alert.isDuress) ...[
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.sosRed,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.warning_amber_rounded,
+                                      color: Colors.white, size: 16),
+                                  SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'CRITICAL: Citizen entered Decoy Duress PIN! Coerced cancellation. DO NOT STAND DOWN.',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [

@@ -3,6 +3,7 @@ import 'package:suraksha_ghaziabad/core/utils/distance_util.dart';
 import 'package:suraksha_ghaziabad/core/utils/hash_util.dart';
 import 'package:suraksha_ghaziabad/data/models/report_model.dart';
 import 'package:suraksha_ghaziabad/data/models/sos_alert_model.dart';
+import 'package:suraksha_ghaziabad/data/models/user_model.dart';
 
 void main() {
   group('Suraksha Ghaziabad Core Utility Tests', () {
@@ -31,7 +32,20 @@ void main() {
       expect(formatted.contains('km'), isTrue);
     });
 
-    test('ReportModel serialization maintains fields', () {
+    test('ReportModel authority resolution and ward mapping', () {
+      expect(ReportModel.resolveAuthority('Broken streetlight'),
+          'NAGAR_NIGAM_GHAZIABAD');
+      expect(ReportModel.resolveAuthority('Isolated road'),
+          'NAGAR_NIGAM_GHAZIABAD');
+      expect(ReportModel.resolveAuthority('Harassment'), 'UP_POLICE');
+      expect(ReportModel.resolveAuthority('Drunk crowd'), 'UP_POLICE');
+
+      final ward = ReportModel.resolveWard(28.6432, 77.3695, 'Indirapuram');
+      expect(ward.contains('Vasundhara'), isTrue);
+    });
+
+    test('ReportModel serialization maintains fields and authority queues',
+        () {
       final report = ReportModel(
         id: 'test_rep_1',
         category: 'Broken streetlight',
@@ -44,6 +58,8 @@ void main() {
         isAnonymous: true,
         severity: 4,
         timeOfDay: 'Night',
+        routedAuthority: 'NAGAR_NIGAM_GHAZIABAD',
+        acknowledgementStatus: 'Delivered to Control Room',
       );
 
       final json = report.toJson();
@@ -53,9 +69,11 @@ void main() {
       expect(fromJson.category, 'Broken streetlight');
       expect(fromJson.severity, 4);
       expect(fromJson.isAnonymous, isTrue);
+      expect(fromJson.routedAuthority, 'NAGAR_NIGAM_GHAZIABAD');
+      expect(fromJson.acknowledgementStatus, 'Delivered to Control Room');
     });
 
-    test('SosAlertModel active status lifecycle check', () {
+    test('SosAlertModel active status and duress lifecycle check', () {
       final alert = SosAlertModel(
         id: 'sos_1',
         userId: 'u_1',
@@ -72,6 +90,30 @@ void main() {
 
       final cancelled = alert.copyWith(status: 'cancelled');
       expect(cancelled.isActive, isFalse);
+
+      // Duress alert remains active to protect victim even if status marked cancelled
+      final duressAlert = alert.copyWith(isDuress: true, status: 'cancelled');
+      expect(duressAlert.isActive, isTrue);
+    });
+
+    test('UserModel duressPinHash verification and serialization', () {
+      final user = UserModel(
+        id: 'usr_test',
+        name: 'Citizen Safety Tester',
+        phone: '+919876543210',
+        role: 'citizen',
+        emergencyPinHash: HashUtil.hashPin('4321'),
+        duressPinHash: HashUtil.hashPin('9999'),
+        createdAt: DateTime.now(),
+      );
+
+      expect(HashUtil.verifyPin('4321', user.emergencyPinHash), isTrue);
+      expect(HashUtil.verifyPin('9999', user.duressPinHash), isTrue);
+      expect(HashUtil.verifyPin('1234', user.duressPinHash), isFalse);
+
+      final json = user.toJson();
+      final fromJson = UserModel.fromJson(json);
+      expect(fromJson.duressPinHash, user.duressPinHash);
     });
   });
 }

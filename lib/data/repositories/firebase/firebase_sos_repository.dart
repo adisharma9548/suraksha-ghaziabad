@@ -242,6 +242,7 @@ class FirebaseSosRepository implements SosRepository {
     required String unitName,
     required String officerPhone,
   }) async {
+    final now = DateTime.now();
     final existing = _cachedAlerts[alertId];
     if (existing != null) {
       final updated = existing.copyWith(
@@ -249,6 +250,7 @@ class FirebaseSosRepository implements SosRepository {
         assignedUnitName: unitName,
         assignedOfficerPhone: officerPhone,
         status: 'assigned',
+        assignedAt: now,
       );
       _cachedAlerts[alertId] = updated;
       _notifyAlertChange(updated);
@@ -261,9 +263,35 @@ class FirebaseSosRepository implements SosRepository {
           'assignedUnitName': unitName,
           'assignedOfficerPhone': officerPhone,
           'status': 'assigned',
+          'assignedAt': now.toIso8601String(),
         });
       } catch (e) {
         debugPrint('FirebaseSosRepository.assignPatrolUnit error: $e');
+      }
+    }
+  }
+
+  @override
+  Future<void> flagDuress({required String alertId}) async {
+    final existing = _cachedAlerts[alertId];
+    if (existing != null) {
+      final updated = existing.copyWith(
+        isDuress: true,
+        status: 'duress_active',
+      );
+      _cachedAlerts[alertId] = updated;
+      _notifyAlertChange(updated);
+    }
+
+    if (_isFirebaseAvailable) {
+      try {
+        await _alertsCol.doc(alertId).update({
+          'isDuress': true,
+          'status': 'duress_active',
+          'duressTriggeredAt': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        debugPrint('FirebaseSosRepository.flagDuress error: $e');
       }
     }
   }

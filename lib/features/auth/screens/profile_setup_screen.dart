@@ -18,6 +18,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _nameController = TextEditingController();
   final _pinController = TextEditingController();
   final _confirmPinController = TextEditingController();
+  final _duressPinController = TextEditingController();
   final List<TrustedContactModel> _contacts = [];
   final _uuid = const Uuid();
 
@@ -31,6 +32,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     _nameController.dispose();
     _pinController.dispose();
     _confirmPinController.dispose();
+    _duressPinController.dispose();
     super.dispose();
   }
 
@@ -134,9 +136,25 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       return;
     }
 
+    final duressPin = _duressPinController.text.trim();
+    if (duressPin.isNotEmpty && duressPin.length != 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Duress PIN must be exactly 4 digits if set')),
+      );
+      return;
+    }
+
+    if (duressPin.isNotEmpty && duressPin == pin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Duress PIN must be different from your emergency PIN')),
+      );
+      return;
+    }
+
     await ref.read(authProvider.notifier).saveProfile(
           name: name,
           pin: pin,
+          duressPin: duressPin.isNotEmpty ? duressPin : null,
           contacts: _contacts,
         );
 
@@ -245,6 +263,57 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                           ),
                         ),
                       ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Decoy Duress PIN (Optional)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.sosRedLight.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.sosRed.withOpacity(0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.shield_outlined,
+                            color: AppColors.sosRed, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Decoy Duress PIN (Optional)',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.sosRedDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'If forced by an attacker to cancel an active SOS, entering this PIN visually closes the alert while secretly continuing live location streaming to the police control room.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondaryLight,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _duressPinController,
+                      keyboardType: TextInputType.number,
+                      maxLength: 4,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: '4-Digit Duress PIN (optional)',
+                        counterText: '',
+                      ),
                     ),
                   ],
                 ),

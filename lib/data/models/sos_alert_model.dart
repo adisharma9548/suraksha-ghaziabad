@@ -33,8 +33,9 @@ class SosAlertModel {
   final String userId;
   final String userName;
   final String userPhone;
-  final String status; // 'triggered', 'police_notified', 'assigned', 'resolved', 'cancelled'
+  final String status; // 'triggered', 'police_notified', 'assigned', 'resolved', 'cancelled', 'duress_active'
   final DateTime startedAt;
+  final DateTime? assignedAt;
   final DateTime? resolvedAt;
   final String? assignedUnitId;
   final String? assignedUnitName;
@@ -42,6 +43,7 @@ class SosAlertModel {
   final String? audioUrl;
   final List<SosLocationPoint> locations;
   final String? lastLocationAddress;
+  final bool isDuress;
 
   const SosAlertModel({
     required this.id,
@@ -50,6 +52,7 @@ class SosAlertModel {
     required this.userPhone,
     required this.status,
     required this.startedAt,
+    this.assignedAt,
     this.resolvedAt,
     this.assignedUnitId,
     this.assignedUnitName,
@@ -57,13 +60,14 @@ class SosAlertModel {
     this.audioUrl,
     this.locations = const [],
     this.lastLocationAddress,
+    this.isDuress = false,
   });
 
   SosLocationPoint? get latestLocation =>
       locations.isNotEmpty ? locations.last : null;
 
   bool get isActive =>
-      status != 'resolved' && status != 'cancelled';
+      isDuress || (status != 'resolved' && status != 'cancelled');
 
   SosAlertModel copyWith({
     String? id,
@@ -72,6 +76,7 @@ class SosAlertModel {
     String? userPhone,
     String? status,
     DateTime? startedAt,
+    DateTime? assignedAt,
     DateTime? resolvedAt,
     String? assignedUnitId,
     String? assignedUnitName,
@@ -79,6 +84,7 @@ class SosAlertModel {
     String? audioUrl,
     List<SosLocationPoint>? locations,
     String? lastLocationAddress,
+    bool? isDuress,
   }) {
     return SosAlertModel(
       id: id ?? this.id,
@@ -87,6 +93,7 @@ class SosAlertModel {
       userPhone: userPhone ?? this.userPhone,
       status: status ?? this.status,
       startedAt: startedAt ?? this.startedAt,
+      assignedAt: assignedAt ?? this.assignedAt,
       resolvedAt: resolvedAt ?? this.resolvedAt,
       assignedUnitId: assignedUnitId ?? this.assignedUnitId,
       assignedUnitName: assignedUnitName ?? this.assignedUnitName,
@@ -94,6 +101,7 @@ class SosAlertModel {
       audioUrl: audioUrl ?? this.audioUrl,
       locations: locations ?? this.locations,
       lastLocationAddress: lastLocationAddress ?? this.lastLocationAddress,
+      isDuress: isDuress ?? this.isDuress,
     );
   }
 
@@ -105,6 +113,7 @@ class SosAlertModel {
       'userPhone': userPhone,
       'status': status,
       'startedAt': startedAt.toIso8601String(),
+      'assignedAt': assignedAt?.toIso8601String(),
       'resolvedAt': resolvedAt?.toIso8601String(),
       'assignedUnitId': assignedUnitId,
       'assignedUnitName': assignedUnitName,
@@ -112,6 +121,7 @@ class SosAlertModel {
       'audioUrl': audioUrl,
       'locations': locations.map((e) => e.toJson()).toList(),
       'lastLocationAddress': lastLocationAddress,
+      'isDuress': isDuress,
     };
   }
 
@@ -125,6 +135,9 @@ class SosAlertModel {
       startedAt: json['startedAt'] != null
           ? DateTime.parse(json['startedAt'] as String)
           : DateTime.now(),
+      assignedAt: json['assignedAt'] != null
+          ? DateTime.parse(json['assignedAt'] as String)
+          : null,
       resolvedAt: json['resolvedAt'] != null
           ? DateTime.parse(json['resolvedAt'] as String)
           : null,
@@ -138,6 +151,7 @@ class SosAlertModel {
               .toList()
           : [],
       lastLocationAddress: json['lastLocationAddress'] as String?,
+      isDuress: json['isDuress'] as bool? ?? false,
     );
   }
 }

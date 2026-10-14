@@ -224,6 +224,34 @@ class _OfficerSosDetailScreenState extends ConsumerState<OfficerSosDetailScreen>
                         ),
                       ],
                     ),
+                    if (alert.isDuress) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.sosRed,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.warning_rounded,
+                                color: Colors.white, size: 24),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                '⚠️ CRITICAL DURESS DETECTED: Citizen entered Decoy Duress PIN under coercion. DO NOT STAND DOWN. Urgent patrol dispatch required!',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 14),
 
                     // Location address & timestamp

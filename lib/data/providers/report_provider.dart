@@ -32,12 +32,14 @@ class ReportController extends StateNotifier<AsyncValue<void>> {
     required String reportId,
     required String status,
     required String adminNote,
+    String? acknowledgementStatus,
   }) async {
     try {
       await _ref.read(reportRepositoryProvider).updateReportStatus(
             reportId: reportId,
             status: status,
             adminNote: adminNote,
+            acknowledgementStatus: acknowledgementStatus,
           );
       _ref.invalidate(myReportsProvider);
     } catch (_) {}

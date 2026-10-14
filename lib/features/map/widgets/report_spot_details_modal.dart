@@ -106,6 +106,49 @@ class ReportSpotDetailsModal extends StatelessWidget {
               color: AppColors.textSecondaryLight,
             ),
           ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.policeNavySurface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.policeNavy.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  report.routedAuthority == 'NAGAR_NIGAM_GHAZIABAD'
+                      ? Icons.account_balance_rounded
+                      : Icons.local_police_rounded,
+                  size: 16,
+                  color: AppColors.policeNavy,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Routed Authority: ${report.routedAuthorityLabel}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.policeNavy,
+                        ),
+                      ),
+                      Text(
+                        'Status: ${report.acknowledgementStatus} • ${report.wardName}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondaryLight,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.all(14),

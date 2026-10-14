@@ -30,4 +30,7 @@ abstract class SosRepository {
     required String unitName,
     required String officerPhone,
   });
+  Future<void> flagDuress({
+    required String alertId,
+  });
 }

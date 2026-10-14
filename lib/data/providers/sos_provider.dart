@@ -148,6 +148,31 @@ class SosNotifier extends StateNotifier<SosState> {
     if (activeAlert == null) return false;
 
     try {
+      // 1. Check if victim entered Decoy Duress PIN under coercion
+      final isDuress =
+          await _ref.read(authRepositoryProvider).verifyDuressPin(pin);
+      if (isDuress) {
+        // Flag silent duress alert to District Police Control Room
+        await _ref
+            .read(sosRepositoryProvider)
+            .flagDuress(alertId: activeAlert.id);
+
+        // Cancel on-screen alerts so screen visually clears to protect victim from assailant
+        _countdownTimer?.cancel();
+        _alertSubscription?.cancel();
+
+        // Note: ForegroundLocationService remains ACTIVE to stream live coordinates to police!
+        state = const SosState();
+        return true;
+      }
+
+      // 2. Otherwise verify authentic emergency PIN
+      final isValidPin =
+          await _ref.read(authRepositoryProvider).verifyEmergencyPin(pin);
+      if (!isValidPin) {
+        return false;
+      }
+
       await _ref.read(sosRepositoryProvider).cancelSos(
             alertId: activeAlert.id,
             pin: pin,

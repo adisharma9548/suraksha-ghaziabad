@@ -9,11 +9,14 @@ abstract class AuthRepository {
   Future<void> saveProfile({
     required String name,
     required String pin,
+    String? duressPin,
     required List<TrustedContactModel> contacts,
   });
   Future<void> updateUser(UserModel user);
   Future<bool> verifyEmergencyPin(String pin);
   Future<void> changeEmergencyPin(String newPin);
+  Future<bool> verifyDuressPin(String pin);
+  Future<void> changeDuressPin(String newDuressPin);
   Future<List<TrustedContactModel>> getTrustedContacts();
   Future<void> addTrustedContact(TrustedContactModel contact);
   Future<void> removeTrustedContact(String contactId);

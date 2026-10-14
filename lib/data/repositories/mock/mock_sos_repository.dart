@@ -171,6 +171,20 @@ class MockSosRepository implements SosRepository {
         assignedUnitId: unitId,
         assignedUnitName: unitName,
         assignedOfficerPhone: officerPhone,
+        assignedAt: DateTime.now(),
+      );
+      _alerts[index] = updated;
+      _notifyChanges(updated);
+    }
+  }
+
+  @override
+  Future<void> flagDuress({required String alertId}) async {
+    final index = _alerts.indexWhere((a) => a.id == alertId);
+    if (index != -1) {
+      final updated = _alerts[index].copyWith(
+        isDuress: true,
+        status: 'duress_active',
       );
       _alerts[index] = updated;
       _notifyChanges(updated);

@@ -75,6 +75,7 @@ class MockAuthRepository implements AuthRepository {
   Future<void> saveProfile({
     required String name,
     required String pin,
+    String? duressPin,
     required List<TrustedContactModel> contacts,
   }) async {
     final currentUser = await getCurrentUser();
@@ -83,6 +84,9 @@ class MockAuthRepository implements AuthRepository {
     final updated = currentUser.copyWith(
       name: name,
       emergencyPinHash: HashUtil.hashPin(pin),
+      duressPinHash: (duressPin != null && duressPin.isNotEmpty)
+          ? HashUtil.hashPin(duressPin)
+          : currentUser.duressPinHash,
     );
 
     await _saveUser(updated);
@@ -100,7 +104,7 @@ class MockAuthRepository implements AuthRepository {
   @override
   Future<bool> verifyEmergencyPin(String pin) async {
     final user = await getCurrentUser();
-    if (user == null) return false;
+    if (user == null || user.emergencyPinHash.isEmpty) return false;
     return HashUtil.verifyPin(pin, user.emergencyPinHash);
   }
 
@@ -110,6 +114,23 @@ class MockAuthRepository implements AuthRepository {
     if (user == null) return;
     final updated = user.copyWith(
       emergencyPinHash: HashUtil.hashPin(newPin),
+    );
+    await _saveUser(updated);
+  }
+
+  @override
+  Future<bool> verifyDuressPin(String pin) async {
+    final user = await getCurrentUser();
+    if (user == null || user.duressPinHash.isEmpty) return false;
+    return HashUtil.verifyPin(pin, user.duressPinHash);
+  }
+
+  @override
+  Future<void> changeDuressPin(String newDuressPin) async {
+    final user = await getCurrentUser();
+    if (user == null) return;
+    final updated = user.copyWith(
+      duressPinHash: HashUtil.hashPin(newDuressPin),
     );
     await _saveUser(updated);
   }

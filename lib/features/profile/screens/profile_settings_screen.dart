@@ -6,6 +6,7 @@ import '../../../core/l10n/app_localizations.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/providers/settings_provider.dart';
 import 'change_pin_dialog.dart';
+import 'change_duress_pin_dialog.dart';
 
 class ProfileSettingsScreen extends ConsumerWidget {
   const ProfileSettingsScreen({super.key});
@@ -19,6 +20,22 @@ class ProfileSettingsScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Emergency PIN updated successfully!'),
+            backgroundColor: AppColors.safeGreen,
+          ),
+        );
+      }
+    });
+  }
+
+  void _showChangeDuressPinDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => const ChangeDuressPinDialog(),
+    ).then((updated) {
+      if (updated == true && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Decoy Duress PIN configured successfully!'),
             backgroundColor: AppColors.safeGreen,
           ),
         );
@@ -176,6 +193,14 @@ class ProfileSettingsScreen extends ConsumerWidget {
                     title: Text(l10n.changeEmergencyPin),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _showChangePinDialog(context),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  ListTile(
+                    leading: const Icon(Icons.shield_outlined, color: AppColors.sosRed),
+                    title: const Text('Configure Decoy Duress PIN'),
+                    subtitle: const Text('Silent covert cancellation code for coercion', style: TextStyle(fontSize: 11)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _showChangeDuressPinDialog(context),
                   ),
                   const Divider(height: 1, indent: 56),
                   SwitchListTile(
