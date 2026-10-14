@@ -62,9 +62,8 @@ class PrivacyPolicyScreen extends StatelessWidget {
             ),
 
             _PolicySection(
-              title: '4. Control Room Integration Notice',
-              content:
-                  'Suraksha Ghaziabad is developed for the Ghaziabad Seva First Innovation Challenge 2026. The platform is designed to integrate with UP Dial 112 and District Police Control Rooms. All current prototype notifications operate in high-priority sandbox simulation.',
+              title: '4. Dial 112 & Control Room Notice',
+              content: AppConstants.policeIntegrationNotice,
             ),
 
             _PolicySection(

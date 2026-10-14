@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../data/providers/sos_provider.dart';
 import '../widgets/pin_verify_dialog.dart';
@@ -126,7 +127,7 @@ class SosActiveScreen extends ConsumerWidget {
                           Text(
                             isResolved
                                 ? 'Patrol unit confirmed on-scene resolution. Location streaming and evidence recording stopped.'
-                                : 'High priority distress beacon broadcasting to UP Dial 112 Control Room & Trusted Circles.',
+                                : 'Emergency SOS active. Opening direct Dial 112 call and notifying trusted emergency contacts & district officers.',
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               fontSize: 13,
@@ -231,6 +232,34 @@ class SosActiveScreen extends ConsumerWidget {
                       subtitle: 'Safety verified and logged in district control record',
                       isCompleted: isResolved,
                       isCurrent: isResolved,
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryPurple.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: AppColors.primaryPurple.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.info_outline_rounded,
+                              size: 18, color: AppColors.primaryPurple),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              AppConstants.policeIntegrationNotice,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondaryLight,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

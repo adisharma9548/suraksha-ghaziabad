@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/sos_alert_model.dart';
 import 'repository_providers.dart';
 import 'auth_provider.dart';
+import '../../core/services/foreground_location_service.dart';
 
 class SosState {
   final SosAlertModel? activeAlert;
@@ -51,9 +53,9 @@ class SosNotifier extends StateNotifier<SosState> {
     required double lng,
   }) async {
     final user = _ref.read(authProvider).user;
-    final userId = user?.id ?? 'guest_user';
-    final userName = user?.name ?? 'Citizen';
-    final userPhone = user?.phone ?? '+919876543210';
+    final userId = user?.id ?? 'citizen_user';
+    final userName = user != null && user.name.isNotEmpty ? user.name : 'Citizen in Distress';
+    final userPhone = user?.phone ?? '';
 
     state = state.copyWith(
       isTriggering: true,
@@ -63,6 +65,17 @@ class SosNotifier extends StateNotifier<SosState> {
     );
 
     try {
+      // (a) Launch direct 112 emergency phone call intent to complement national emergency service
+      final telUri = Uri.parse('tel:112');
+      try {
+        if (await canLaunchUrl(telUri)) {
+          await launchUrl(telUri);
+        }
+      } catch (telErr) {
+        debugPrint('Direct 112 intent launch notice: $telErr');
+      }
+
+      // (b) Write alert to Firestore
       final alert = await _ref.read(sosRepositoryProvider).triggerSos(
             userId: userId,
             userName: userName,
@@ -76,13 +89,26 @@ class SosNotifier extends StateNotifier<SosState> {
         isTriggering: false,
       );
 
+      // (c) Start Foreground Location Service for live breadcrumb streaming during SOS
+      ForegroundLocationService.instance.startTracking(
+        sessionId: alert.id,
+        sessionType: 'sos',
+        onLocationUpdate: (currentLat, currentLng) {
+          _ref.read(sosRepositoryProvider).addLocationBreadcrumb(
+                alertId: alert.id,
+                lat: currentLat,
+                lng: currentLng,
+              );
+        },
+      );
+
       // Start 5-second cancel countdown
       _startCountdown(alert.id);
 
       // Subscribe to real-time status changes
       _subscribeToAlert(alert.id);
 
-      // Fallback SMS notification
+      // (d) Notify trusted contacts via SMS intent
       _sendFallbackSms(lat, lng, userName);
     } catch (e) {
       state = state.copyWith(isTriggering: false, errorMessage: e.toString());
@@ -111,6 +137,7 @@ class SosNotifier extends StateNotifier<SosState> {
         state = state.copyWith(activeAlert: updatedAlert);
         if (!updatedAlert.isActive) {
           state = state.copyWith(isAudioRecording: false);
+          ForegroundLocationService.instance.stopTracking();
         }
       }
     });
@@ -127,6 +154,7 @@ class SosNotifier extends StateNotifier<SosState> {
           );
       _countdownTimer?.cancel();
       _alertSubscription?.cancel();
+      await ForegroundLocationService.instance.stopTracking();
       state = const SosState();
       return true;
     } catch (e) {
@@ -142,16 +170,20 @@ class SosNotifier extends StateNotifier<SosState> {
 
       final mapsUrl = 'https://maps.google.com/?q=$lat,$lng';
       final message =
-          'EMERGENCY SOS! $name triggered an emergency alert in Ghaziabad! Live location: $mapsUrl';
+          'EMERGENCY SOS: $name requires urgent emergency assistance in Ghaziabad! GPS Location: $mapsUrl';
 
-      final recipients = contacts.map((c) => c.phone).join(',');
-      final smsUri = Uri.parse('sms:$recipients?body=${Uri.encodeComponent(message)}');
+      final recipients = contacts.map((c) => c.phone).join(';');
+      final smsUri = Uri(
+        scheme: 'sms',
+        path: recipients,
+        queryParameters: {'body': message},
+      );
 
       if (await canLaunchUrl(smsUri)) {
         await launchUrl(smsUri);
       }
-    } catch (_) {
-      // In mock mode / background, continue smoothly
+    } catch (e) {
+      debugPrint('SMS intent fallback notice: $e');
     }
   }
 
@@ -159,6 +191,7 @@ class SosNotifier extends StateNotifier<SosState> {
   void dispose() {
     _countdownTimer?.cancel();
     _alertSubscription?.cancel();
+    ForegroundLocationService.instance.stopTracking();
     super.dispose();
   }
 }

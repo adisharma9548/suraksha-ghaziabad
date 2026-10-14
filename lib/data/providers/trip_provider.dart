@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/trip_model.dart';
 import 'repository_providers.dart';
 import 'auth_provider.dart';
+import '../../core/services/foreground_location_service.dart';
 
 class TripState {
   final TripModel? activeTrip;
@@ -77,6 +78,19 @@ class TripNotifier extends StateNotifier<TripState> {
         activeTrip: trip,
         isTracking: true,
       );
+
+      // Start foreground location service for live trip journey
+      ForegroundLocationService.instance.startTracking(
+        sessionId: trip.id,
+        sessionType: 'trip',
+        onLocationUpdate: (currentLat, currentLng) {
+          _ref.read(tripRepositoryProvider).addTripBreadcrumb(
+                tripId: trip.id,
+                lat: currentLat,
+                lng: currentLng,
+              );
+        },
+      );
     } catch (e) {
       state = state.copyWith(errorMessage: e.toString());
     }
@@ -133,6 +147,7 @@ class TripNotifier extends StateNotifier<TripState> {
   Future<void> endTrip() async {
     _safetyCheckSimulationTimer?.cancel();
     _alertCountdownTimer?.cancel();
+    await ForegroundLocationService.instance.stopTracking();
 
     final trip = state.activeTrip;
     if (trip != null) {
@@ -145,6 +160,7 @@ class TripNotifier extends StateNotifier<TripState> {
   void dispose() {
     _safetyCheckSimulationTimer?.cancel();
     _alertCountdownTimer?.cancel();
+    ForegroundLocationService.instance.stopTracking();
     super.dispose();
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/user_model.dart';
 import '../../models/trusted_contact_model.dart';
@@ -179,6 +180,15 @@ class FirebaseAuthRepository implements AuthRepository {
     }
 
     _cachedUser = UserModel.fromJson(data);
+
+    if (_isFirebaseAvailable) {
+      try {
+        await FirebaseMessaging.instance.subscribeToTopic('officers_ghaziabad');
+      } catch (fcmErr) {
+        debugPrint('FCM topic subscription notice: $fcmErr');
+      }
+    }
+
     return _cachedUser!;
   }
 
@@ -335,6 +345,9 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<void> logout() async {
     if (_isFirebaseAvailable) {
+      try {
+        await FirebaseMessaging.instance.unsubscribeFromTopic('officers_ghaziabad');
+      } catch (_) {}
       await _effectiveAuth.signOut();
     }
     _cachedUser = null;
