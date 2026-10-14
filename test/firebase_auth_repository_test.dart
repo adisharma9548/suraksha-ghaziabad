@@ -110,5 +110,26 @@ void main() {
       final contacts = await repo.getTrustedContacts();
       expect(contacts.length, 1);
     });
+
+    test('duress PIN correctly validates against duressPinHash and differs from emergency PIN', () async {
+      final user = UserModel(
+        id: 'user_test_duress',
+        name: 'Duress Citizen',
+        phone: '+919999999999',
+        role: 'citizen',
+        language: 'en',
+        emergencyPinHash: HashUtil.hashPin('1234'),
+        duressPinHash: HashUtil.hashPin('9999'),
+        createdAt: DateTime.now(),
+      );
+
+      final repo = FirebaseAuthRepository(initialUser: user);
+      expect(await repo.verifyEmergencyPin('1234'), isTrue);
+      expect(await repo.verifyEmergencyPin('9999'), isFalse);
+      expect(await repo.verifyDuressPin('9999'), isTrue);
+      expect(await repo.verifyDuressPin('1234'), isFalse);
+      expect(await repo.verifyDuressPin('0000'), isFalse);
+    });
   });
 }
+

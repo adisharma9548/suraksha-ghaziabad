@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -8,6 +9,7 @@ import '../../models/user_model.dart';
 import '../../models/trusted_contact_model.dart';
 import '../abstract/auth_repository.dart';
 import '../../../core/utils/hash_util.dart';
+import '../../../core/services/sms_service.dart';
 
 /// Firebase implementation of AuthRepository
 /// Connects to FirebaseAuth (Phone OTP) and Cloud Firestore ('users' & 'trusted_contacts')
@@ -17,6 +19,9 @@ class FirebaseAuthRepository implements AuthRepository {
   UserModel? _cachedUser;
   final List<TrustedContactModel> _cachedContacts = [];
   String? _verificationId;
+  String? _pendingPhone;
+  String? _pendingOtp;
+  DateTime? _otpExpiresAt;
 
   FirebaseAuthRepository({
     this.auth,
@@ -60,93 +65,168 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<bool> sendOtp(String phone) async {
-    if (!_isFirebaseAvailable) {
+    final cleanPhone = SmsHorizonService.sanitizePhoneNumber(phone);
+
+    // Generate secure 6-digit random OTP
+    final random = math.Random.secure();
+    final otp = (100000 + random.nextInt(900000)).toString();
+
+    _pendingPhone = cleanPhone;
+    _pendingOtp = otp;
+    _otpExpiresAt = DateTime.now().add(const Duration(minutes: 5));
+
+    debugPrint(
+        '[FirebaseAuthRepository] Sending OTP $otp via SMS Horizon to $cleanPhone');
+    final sent = await SmsHorizonService.instance.sendOtpSms(
+      phone: cleanPhone,
+      otp: otp,
+    );
+
+    if (sent) {
       return true;
     }
 
-    final completer = Completer<bool>();
-
-    try {
-      await _effectiveAuth.verifyPhoneNumber(
-        phoneNumber: phone,
-        verificationCompleted: (PhoneAuthCredential credential) async {
-          await _effectiveAuth.signInWithCredential(credential);
-          if (!completer.isCompleted) completer.complete(true);
-        },
-        verificationFailed: (FirebaseAuthException e) {
-          debugPrint('FirebaseAuthRepository.verifyPhoneNumber failed: ${e.message}');
-          if (!completer.isCompleted) completer.complete(false);
-        },
-        codeSent: (String verificationId, int? resendToken) {
-          _verificationId = verificationId;
-          if (!completer.isCompleted) completer.complete(true);
-        },
-        codeAutoRetrievalTimeout: (String verificationId) {
-          _verificationId = verificationId;
-        },
-        timeout: const Duration(seconds: 60),
-      );
-      return await completer.future;
-    } catch (e) {
-      debugPrint('FirebaseAuthRepository.sendOtp error: $e');
-      return false;
+    // Fallback: If SMS Horizon gateway had a network issue, try Firebase Phone Auth if available
+    if (_isFirebaseAvailable) {
+      final completer = Completer<bool>();
+      try {
+        await _effectiveAuth.verifyPhoneNumber(
+          phoneNumber: phone.startsWith('+') ? phone : '+91$cleanPhone',
+          verificationCompleted: (PhoneAuthCredential credential) async {
+            await _effectiveAuth.signInWithCredential(credential);
+            if (!completer.isCompleted) completer.complete(true);
+          },
+          verificationFailed: (FirebaseAuthException e) {
+            debugPrint(
+                'FirebaseAuthRepository.verifyPhoneNumber failed: ${e.message}');
+            if (!completer.isCompleted) completer.complete(false);
+          },
+          codeSent: (String verificationId, int? resendToken) {
+            _verificationId = verificationId;
+            if (!completer.isCompleted) completer.complete(true);
+          },
+          codeAutoRetrievalTimeout: (String verificationId) {
+            _verificationId = verificationId;
+          },
+          timeout: const Duration(seconds: 60),
+        );
+        return await completer.future;
+      } catch (e) {
+        debugPrint('FirebaseAuthRepository.sendOtp fallback error: $e');
+        return false;
+      }
     }
+
+    return false;
   }
 
   @override
   Future<UserModel> verifyOtp(String phone, String otp) async {
-    if (!_isFirebaseAvailable) {
-      final user = _cachedUser ??
-          UserModel(
-            id: 'mock_uid_${DateTime.now().millisecondsSinceEpoch}',
-            name: 'Citizen',
-            phone: phone,
+    final cleanPhone = SmsHorizonService.sanitizePhoneNumber(phone);
+
+    // 1. Verify against SMS Horizon OTP
+    if (_pendingPhone == cleanPhone && _pendingOtp != null) {
+      if (_otpExpiresAt != null && DateTime.now().isAfter(_otpExpiresAt!)) {
+        throw Exception(
+            'Verification code expired. Please request a new OTP.');
+      }
+
+      if (_pendingOtp == otp) {
+        _pendingOtp = null;
+        _otpExpiresAt = null;
+
+        String uid = 'usr_$cleanPhone';
+        if (_isFirebaseAvailable) {
+          try {
+            if (_effectiveAuth.currentUser == null) {
+              final anon = await _effectiveAuth.signInAnonymously();
+              uid = anon.user?.uid ?? uid;
+            } else {
+              uid = _effectiveAuth.currentUser!.uid;
+            }
+          } catch (e) {
+            debugPrint('Firebase Auth anonymous binding notice: $e');
+          }
+
+          final userDocRef = _effectiveFirestore.collection('users').doc(uid);
+          final userDoc = await userDocRef.get();
+
+          if (userDoc.exists && userDoc.data() != null) {
+            _cachedUser = UserModel.fromJson(userDoc.data()!);
+            return _cachedUser!;
+          }
+
+          final newUser = UserModel(
+            id: uid,
+            name: '',
+            phone: '+91$cleanPhone',
             role: 'citizen',
             language: 'en',
             emergencyPinHash: '',
             createdAt: DateTime.now(),
+            hasConsented: true,
           );
-      _cachedUser = user;
-      return user;
+          await userDocRef.set(newUser.toJson());
+          _cachedUser = newUser;
+          return newUser;
+        }
+
+        // Offline / sandbox user creation
+        final newUser = UserModel(
+          id: uid,
+          name: '',
+          phone: '+91$cleanPhone',
+          role: 'citizen',
+          language: 'en',
+          emergencyPinHash: '',
+          createdAt: DateTime.now(),
+          hasConsented: true,
+        );
+        _cachedUser = newUser;
+        return newUser;
+      }
     }
 
-    if (_verificationId == null) {
-      throw Exception('Verification ID is null. Request an OTP first.');
+    // 2. Fallback to Firebase PhoneAuthProvider if verificationId was issued
+    if (_verificationId != null && _isFirebaseAvailable) {
+      final credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: otp,
+      );
+
+      final userCredential =
+          await _effectiveAuth.signInWithCredential(credential);
+      final uid = userCredential.user?.uid;
+      if (uid == null) {
+        throw Exception('Firebase authentication returned no user UID');
+      }
+
+      final userDocRef = _effectiveFirestore.collection('users').doc(uid);
+      final userDoc = await userDocRef.get();
+
+      if (userDoc.exists && userDoc.data() != null) {
+        _cachedUser = UserModel.fromJson(userDoc.data()!);
+        return _cachedUser!;
+      }
+
+      final newUser = UserModel(
+        id: uid,
+        name: '',
+        phone: phone,
+        role: 'citizen',
+        language: 'en',
+        emergencyPinHash: '',
+        createdAt: DateTime.now(),
+        hasConsented: true,
+      );
+
+      await userDocRef.set(newUser.toJson());
+      _cachedUser = newUser;
+      return newUser;
     }
 
-    final credential = PhoneAuthProvider.credential(
-      verificationId: _verificationId!,
-      smsCode: otp,
-    );
-
-    final userCredential = await _effectiveAuth.signInWithCredential(credential);
-    final uid = userCredential.user?.uid;
-    if (uid == null) {
-      throw Exception('Firebase authentication returned no user UID');
-    }
-
-    final userDocRef = _effectiveFirestore.collection('users').doc(uid);
-    final userDoc = await userDocRef.get();
-
-    if (userDoc.exists && userDoc.data() != null) {
-      _cachedUser = UserModel.fromJson(userDoc.data()!);
-      return _cachedUser!;
-    }
-
-    final newUser = UserModel(
-      id: uid,
-      name: '',
-      phone: phone,
-      role: 'citizen',
-      language: 'en',
-      emergencyPinHash: '', // PIN must be explicitly configured by the user
-      createdAt: DateTime.now(),
-      hasConsented: true,
-    );
-
-    await userDocRef.set(newUser.toJson());
-    _cachedUser = newUser;
-    return newUser;
+    throw Exception(
+        'Invalid OTP. Please check the SMS sent to your phone and try again.');
   }
 
   @override

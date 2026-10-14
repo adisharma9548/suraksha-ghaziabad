@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../../models/user_model.dart';
@@ -6,10 +7,14 @@ import '../../models/trusted_contact_model.dart';
 import '../abstract/auth_repository.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/hash_util.dart';
+import '../../../core/services/sms_service.dart';
 
 class MockAuthRepository implements AuthRepository {
   final SharedPreferences _prefs;
   final _uuid = const Uuid();
+  String? _pendingPhone;
+  String? _pendingOtp;
+  DateTime? _otpExpiresAt;
 
   MockAuthRepository(this._prefs);
 
@@ -26,16 +31,36 @@ class MockAuthRepository implements AuthRepository {
 
   @override
   Future<bool> sendOtp(String phone) async {
-    // Mock simulation: OTP is always 123456
-    await Future.delayed(const Duration(milliseconds: 600));
+    final cleanPhone = SmsHorizonService.sanitizePhoneNumber(phone);
+    final random = math.Random.secure();
+    final otp = (100000 + random.nextInt(900000)).toString();
+
+    _pendingPhone = cleanPhone;
+    _pendingOtp = otp;
+    _otpExpiresAt = DateTime.now().add(const Duration(minutes: 5));
+
+    await SmsHorizonService.instance.sendOtpSms(
+      phone: cleanPhone,
+      otp: otp,
+    );
     return true;
   }
 
   @override
   Future<UserModel> verifyOtp(String phone, String otp) async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    final existingUser = await getCurrentUser();
+    final cleanPhone = SmsHorizonService.sanitizePhoneNumber(phone);
+    if (_pendingPhone == cleanPhone && _pendingOtp != null) {
+      if (_otpExpiresAt != null && DateTime.now().isAfter(_otpExpiresAt!)) {
+        throw Exception('Verification code expired. Please request a new OTP.');
+      }
+      if (_pendingOtp != otp) {
+        throw Exception(
+            'Invalid OTP. Please check the SMS sent to your phone.');
+      }
+      _pendingOtp = null;
+    }
 
+    final existingUser = await getCurrentUser();
     if (existingUser != null && existingUser.phone == phone) {
       return existingUser;
     }

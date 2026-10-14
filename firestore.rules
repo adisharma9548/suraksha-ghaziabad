@@ -1,92 +1,148 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check if the caller is an authenticated user
+
+    // --- Helper Security Functions ---
+
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Helper function to check if the caller owns the document
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Helper function to check if the caller is an officer
+    // STRICT: Officer role verified EXCLUSIVELY via Firebase Auth Custom Claims
     function isOfficer() {
-      return isAuthenticated() && 
-        (request.auth.token.role == 'officer' || 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'officer');
+      return isAuthenticated() && request.auth.token.role == 'officer';
     }
 
-    // USERS COLLECTION
-    // Users can read and update their own document.
-    // Emergency PINs must only be stored as hashes.
+    // STRICT: Admin role verified EXCLUSIVELY via Firebase Auth Custom Claims
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.role == 'admin';
+    }
+
+    // STRICT: Geographic coordinate bounding for Ghaziabad & surrounding NCR
+    function isValidCoordinates(lat, lng) {
+      return lat is number && lng is number &&
+             lat >= 28.30 && lat <= 29.15 &&
+             lng >= 77.10 && lng <= 77.85;
+    }
+
+    // --- USERS COLLECTION ---
     match /users/{userId} {
-      allow read: if isOwner(userId) || isOfficer();
-      allow create: if isOwner(userId) && request.resource.data.keys().hasAll(['emergencyPinHash']) && !request.resource.data.keys().hasAny(['emergencyPin']);
-      allow update: if isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
+      allow read: if isOwner(userId) || isOfficer() || isAdmin();
+      
+      // Prevent citizens from assigning themselves officer/admin roles upon creation
+      allow create: if isOwner(userId) &&
+                       request.resource.data.emergencyPinHash is string &&
+                       !('emergencyPin' in request.resource.data) &&
+                       !('duressPin' in request.resource.data) &&
+                       (!('role' in request.resource.data) || request.resource.data.role == 'citizen');
+
+      // Prevent citizens from mutating their role or creation timestamp
+      allow update: if isOwner(userId) &&
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'createdAt']) &&
+                       !('emergencyPin' in request.resource.data) &&
+                       !('duressPin' in request.resource.data);
+
       allow delete: if isOwner(userId);
 
       // Trusted contacts subcollection
+      match /trusted_contacts/{contactId} {
+        allow read, write: if isOwner(userId);
+      }
       match /trustedContacts/{contactId} {
         allow read, write: if isOwner(userId);
       }
     }
 
-    // SOS ALERTS COLLECTION
-    // Citizens can create an SOS alert for themselves and read their own.
-    // Officers have real-time read and status-update access to all alerts.
+    // --- SOS ALERTS COLLECTION ---
     match /sos_alerts/{alertId} {
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      // Citizen owns alert OR caller is authorized police officer
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isOfficer());
-      allow update: if isAuthenticated() && (
-        // Citizen can update if it's their alert (e.g. cancel with PIN, add audio link)
-        resource.data.userId == request.auth.uid || 
-        // Officer can update status and assigned unit
-        isOfficer()
+
+      // Citizen initiates alert: must start with 'triggered' status, cannot assign unit
+      allow create: if isAuthenticated() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.status == 'triggered' &&
+                       request.resource.data.userName is string &&
+                       request.resource.data.startedAt is string;
+
+      // Update restrictions:
+      // - Officer can update status, assign unit, resolve
+      // - Citizen CANNOT change status to 'assigned' or 'resolved' or change assigned officer
+      allow update: if isOfficer() || (
+        isAuthenticated() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'isDuress', 'resolvedAt', 'locations']) &&
+        (request.resource.data.status == 'cancelled' || request.resource.data.status == 'duress_active') &&
+        (!('assignedUnitId' in request.resource.data) || request.resource.data.assignedUnitId == resource.data.assignedUnitId)
       );
 
-      // Subcollection for live moving GPS track coordinates
+      // Breadcrumb stream subcollection
       match /locations/{locationId} {
-        allow create: if isAuthenticated() && get(/databases/$(database)/documents/sos_alerts/$(alertId)).data.userId == request.auth.uid;
-        allow read: if isAuthenticated() && (get(/databases/$(database)/documents/sos_alerts/$(alertId)).data.userId == request.auth.uid || isOfficer());
+        allow create: if isAuthenticated() &&
+                         get(/databases/$(database)/documents/sos_alerts/$(alertId)).data.userId == request.auth.uid &&
+                         isValidCoordinates(request.resource.data.lat, request.resource.data.lng);
+        allow read: if isAuthenticated() &&
+                       (get(/databases/$(database)/documents/sos_alerts/$(alertId)).data.userId == request.auth.uid || isOfficer());
       }
     }
 
-    // CITIZEN REPORTS COLLECTION
-    // Heatmap reports: anyone can read.
-    // Anonymous creation: no personal userId is required or permitted in anonymous reports.
-    // Officers can update status (Open -> In Progress -> Fixed) with an action note.
+    // --- CITIZEN SAFETY REPORTS COLLECTION ---
     match /reports/{reportId} {
+      // Public safety heatmap can be read by any client
       allow read: if true;
-      allow create: if isAuthenticated() || request.resource.data.isAnonymous == true;
+
+      // Report creation validation:
+      // - Valid category
+      // - Description bounded between 3 and 1500 chars
+      // - Bounded coordinates within Ghaziabad
+      // - Initial status must strictly be 'Open'
+      allow create: if request.resource.data.category in ['Broken streetlight', 'Isolated road', 'Harassment', 'Drunk crowd', 'Other'] &&
+                       request.resource.data.description is string &&
+                       request.resource.data.description.size() >= 3 &&
+                       request.resource.data.description.size() <= 1500 &&
+                       isValidCoordinates(request.resource.data.lat, request.resource.data.lng) &&
+                       request.resource.data.status == 'Open';
+
+      // Citizens CANNOT modify reports. Only officers can change status, routing, and add action notes
       allow update: if isOfficer();
-      allow delete: if isOfficer();
+      allow delete: if isOfficer() || isAdmin();
     }
 
-    // PATROL UNITS COLLECTION
-    // Real-time location and availability of police patrol vans.
-    // Officers can read, create, and update; citizens have read-only access to assigned units.
+    // --- PATROL UNITS COLLECTION ---
     match /patrol_units/{unitId} {
       allow read: if isAuthenticated();
-      allow write: if isOfficer();
+      allow write: if isOfficer() || isAdmin();
     }
 
-    // HELP PLACES COLLECTION
-    // Public directory of police stations, women helpdesks, and hospitals in Ghaziabad.
+    // --- HELP PLACES DIRECTORY ---
     match /help_places/{placeId} {
       allow read: if true;
-      allow write: if isOfficer();
+      allow write: if isOfficer() || isAdmin();
     }
 
-    // TRIPS COLLECTION
-    // Real-time trip sharing with safety checks.
-    // Citizens can manage their own trips; trusted contacts and officers can view.
+    // --- TRIPS COLLECTION ---
     match /trips/{tripId} {
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isOfficer());
+      allow create: if isAuthenticated() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.status == 'active';
       allow update, delete: if isOwner(resource.data.userId);
+    }
+
+    // --- AUDIT LOGS (SERVER-SIDE ONLY) ---
+    // Immutable audit trail written exclusively by Cloud Functions via Firebase Admin SDK
+    match /audit_logs/{logId} {
+      allow read: if isOfficer() || isAdmin();
+      allow write: if false;
+    }
+
+    // --- RATE LIMITS (SERVER-SIDE ONLY) ---
+    match /rate_limits/{limitId} {
+      allow read, write: if false;
     }
   }
 }

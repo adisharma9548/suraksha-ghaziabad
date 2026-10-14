@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'app.dart';
 import 'data/providers/repository_providers.dart';
 
@@ -29,6 +31,17 @@ void main() async {
   try {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp();
+    }
+    // Initialize App Check
+    try {
+      await FirebaseAppCheck.instance.activate(
+        androidProvider:
+            kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+        appleProvider:
+            kDebugMode ? AppleProvider.debug : AppleProvider.deviceCheck,
+      );
+    } catch (appCheckErr) {
+      debugPrint('App Check initialization notice: $appCheckErr');
     }
   } catch (e) {
     debugPrint('Firebase initialization notice: $e');
