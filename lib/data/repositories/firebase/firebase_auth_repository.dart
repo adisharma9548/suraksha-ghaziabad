@@ -1,32 +1,34 @@
 import '../../models/user_model.dart';
 import '../../models/trusted_contact_model.dart';
 import '../abstract/auth_repository.dart';
+import '../../../core/utils/hash_util.dart';
 
 /// Firebase Implementation of AuthRepository
 /// When Firebase credentials are plugged in (google-services.json),
 /// this repository connects to FirebaseAuth and FirebaseFirestore.
 class FirebaseAuthRepository implements AuthRepository {
+  UserModel? _currentUser;
+  final List<TrustedContactModel> _contacts = [];
+
+  FirebaseAuthRepository({UserModel? initialUser}) : _currentUser = initialUser;
+
   @override
   Future<UserModel?> getCurrentUser() async {
-    // Connects to FirebaseAuth.instance.currentUser
-    return null;
+    return _currentUser;
   }
 
   @override
   Future<bool> sendOtp(String phone) async {
-    // Connects to FirebaseAuth.instance.verifyPhoneNumber()
     return true;
   }
 
   @override
   Future<UserModel> verifyOtp(String phone, String otp) async {
-    // Connects to FirebaseAuth.instance.signInWithCredential()
     throw UnimplementedError('Connect Firebase project configuration to enable live OTP');
   }
 
   @override
   Future<UserModel> officerLogin(String code, String pin) async {
-    // Connects to Firestore query on 'users' collection where role == 'officer'
     throw UnimplementedError('Connect Firebase project configuration for live officer portal');
   }
 
@@ -35,29 +37,63 @@ class FirebaseAuthRepository implements AuthRepository {
     required String name,
     required String pin,
     required List<TrustedContactModel> contacts,
-  }) async {}
+  }) async {
+    final user = await getCurrentUser();
+    if (user != null) {
+      _currentUser = user.copyWith(
+        name: name,
+        emergencyPinHash: HashUtil.hashPin(pin),
+      );
+    }
+    _contacts.clear();
+    _contacts.addAll(contacts);
+  }
 
   @override
-  Future<void> updateUser(UserModel user) async {}
+  Future<void> updateUser(UserModel user) async {
+    _currentUser = user;
+  }
 
   @override
-  Future<bool> verifyEmergencyPin(String pin) async => true;
+  Future<bool> verifyEmergencyPin(String pin) async {
+    final user = await getCurrentUser();
+    if (user == null || user.emergencyPinHash.isEmpty) {
+      return false;
+    }
+    return HashUtil.verifyPin(pin, user.emergencyPinHash);
+  }
 
   @override
-  Future<void> changeEmergencyPin(String newPin) async {}
+  Future<void> changeEmergencyPin(String newPin) async {
+    final user = await getCurrentUser();
+    if (user == null) return;
+    _currentUser = user.copyWith(
+      emergencyPinHash: HashUtil.hashPin(newPin),
+    );
+  }
 
   @override
-  Future<List<TrustedContactModel>> getTrustedContacts() async => [];
+  Future<List<TrustedContactModel>> getTrustedContacts() async =>
+      List.unmodifiable(_contacts);
 
   @override
-  Future<void> addTrustedContact(TrustedContactModel contact) async {}
+  Future<void> addTrustedContact(TrustedContactModel contact) async {
+    _contacts.add(contact);
+  }
 
   @override
-  Future<void> removeTrustedContact(String contactId) async {}
+  Future<void> removeTrustedContact(String contactId) async {
+    _contacts.removeWhere((c) => c.id == contactId);
+  }
 
   @override
-  Future<void> deleteUserData() async {}
+  Future<void> deleteUserData() async {
+    _currentUser = null;
+    _contacts.clear();
+  }
 
   @override
-  Future<void> logout() async {}
+  Future<void> logout() async {
+    _currentUser = null;
+  }
 }
