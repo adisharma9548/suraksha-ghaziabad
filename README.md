@@ -1,11 +1,35 @@
+<p align="center">
+  <img src="docs/assets/logo.png" width="180" height="180" alt="Suraksha Ghaziabad Logo" style="border-radius: 36px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);"/>
+</p>
+
 # 🛡️ Suraksha Ghaziabad (सुरक्षा ग़ाज़ियाबाद)
 > *"Aapki Suraksha, Hamari Zimmedari"*  
 > **Ghaziabad Seva First Innovation Challenge 2026** • Problem Statement: **Safe City for Women**
 
-[![Flutter Tests](https://img.shields.io/badge/Flutter%20Tests-18%20Passing-emerald)](test/)
-[![Firebase App Check](https://img.shields.io/badge/Firebase%20App%20Check-Play%20Integrity-blue)](lib/main.dart)
-[![SMS Horizon](https://img.shields.io/badge/SMS%20Gateway-SMS%20Horizon%20DLT-orange)](lib/core/services/sms_service.dart)
-[![Web Admin](https://img.shields.io/badge/Web%20Admin-Next.js%2014-black)](web_admin/)
+[![Download APK](https://img.shields.io/badge/Download%20APK-v1.0.0%20(57.3%20MB)-crimson?style=for-the-badge&logo=android)](https://github.com/adisharma9548/suraksha-ghaziabad/raw/main/releases/SurakshaGhaziabad-v1.0.apk)
+[![Flutter Tests](https://img.shields.io/badge/Flutter%20Tests-18%20Passing-emerald?style=for-the-badge)](test/)
+[![Firebase App Check](https://img.shields.io/badge/App%20Check-Play%20Integrity-blue?style=for-the-badge)](lib/main.dart)
+[![SMS Horizon](https://img.shields.io/badge/SMS%20Gateway-SMS%20Horizon%20DLT-orange?style=for-the-badge)](lib/core/services/sms_service.dart)
+[![Web Admin](https://img.shields.io/badge/Web%20Admin-Next.js%2014-black?style=for-the-badge)](web_admin/)
+
+---
+
+## 📲 Direct APK Download (Android)
+
+Anyone can immediately download and install the latest compiled production-style APK directly on any Android device:
+
+| File Name | Direct Download Link | Size | Minimum OS |
+| :--- | :--- | :---: | :---: |
+| **SurakshaGhaziabad-v1.0.apk** | [📥 **Download SurakshaGhaziabad-v1.0.apk**](https://github.com/adisharma9548/suraksha-ghaziabad/raw/main/releases/SurakshaGhaziabad-v1.0.apk) | **57.3 MB** | Android 7.0+ (API 24+) |
+
+> **Repository File Path**: [`releases/SurakshaGhaziabad-v1.0.apk`](releases/SurakshaGhaziabad-v1.0.apk)  
+> **SHA-256 Checksum**: `2C3476B74B8F5DBECFEC568D2E9D9D8910AF43ABFFE73F63381D1FC5FCEA36BD`
+
+### 📋 Installation Steps on Android:
+1. Tap the download link above on your Android phone (or download via Chrome / Files).
+2. When prompted by Android that the file was downloaded from an external browser, tap **Settings** ➔ toggle **Allow from this source** (or tap **Install Anyway**).
+3. Tap **Install** and open **Suraksha Ghaziabad**.
+4. Grant runtime permissions for Location (used only during active SOS/Trip), Notifications, and Microphone.
 
 ---
 
@@ -17,6 +41,22 @@ Unlike speculative apps that claim direct automated emergency dispatch without g
 2. **Real-time Live Telemetry & Control Room**: Concurrently writes the incident to Cloud Firestore, initiates a foreground service streaming live GPS breadcrumbs every 5 seconds, notifies trusted emergency circles via SMS intents, and broadcasts high-priority push notifications to district police patrol units.
 3. **Decoy Duress PIN Protection**: If coerced by an attacker to cancel an alarm, the victim enters a secondary Decoy Duress PIN. The phone screen visibly clears to protect the victim from immediate harm, while silently continuing live GPS streaming to police control room consoles with critical flashing stealth intervention alerts.
 4. **Civic vs Policing Dynamic Routing**: Public safety reports are automatically segregated by hazard type—routing streetlights, dark spots, and broken roads to **Nagar Nigam Ghaziabad**, and stalking or harassment threats to **UP Police**.
+
+---
+
+## 🎨 Official Brand Logo & Visual Identity
+
+The official **Suraksha Ghaziabad** logo incorporates:
+- **Protective Armor Shield**: Represents municipal vigilance, emergency shelter, and district police protection.
+- **Empowered Woman Silhouette**: Embodies resilience, dignity, and personal autonomy.
+- **Blooming Lotus of Hope**: Honors Uttar Pradesh's cultural heritage and peaceful civic life.
+- **Guiding Radiant Star**: Reflects the 24/7 watchful vigilance of the control room.
+- **Color Palette**: Royal Purple (`#6750A4`), Deep Magenta (`#B3261E`), and Luminous Warm Gold accents matching the Material 3 design system.
+
+Assets are located in:
+- High-res vector render: [`docs/assets/logo.png`](docs/assets/logo.png)
+- Flutter App asset: [`assets/images/app_logo.png`](assets/images/app_logo.png)
+- Control room web icon: [`web_admin/public/logo.png`](web_admin/public/logo.png)
 
 ---
 

@@ -93,23 +93,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         ),
                       ],
                     ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Icon(
-                          Icons.security_rounded,
-                          size: 80,
-                          color: AppColors.primaryPurple,
-                        ),
-                        Positioned(
-                          bottom: 30,
-                          child: Icon(
-                            Icons.location_on,
-                            size: 34,
-                            color: AppColors.sosRed,
-                          ),
-                        ),
-                      ],
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(70),
+                      child: Image.asset(
+                        'assets/images/app_logo.png',
+                        width: 140,
+                        height: 140,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 ),
