@@ -6,52 +6,37 @@ import '../repositories/abstract/report_repository.dart';
 import '../repositories/abstract/patrol_repository.dart';
 import '../repositories/abstract/help_places_repository.dart';
 import '../repositories/abstract/trip_repository.dart';
-import '../repositories/mock/mock_auth_repository.dart';
-import '../repositories/mock/mock_sos_repository.dart';
-import '../repositories/mock/mock_report_repository.dart';
-import '../repositories/mock/mock_patrol_repository.dart';
-import '../repositories/mock/mock_help_places_repository.dart';
-import '../repositories/mock/mock_trip_repository.dart';
 import '../repositories/firebase/firebase_auth_repository.dart';
 import '../repositories/firebase/firebase_sos_repository.dart';
 import '../repositories/firebase/firebase_report_repository.dart';
-import '../../core/config/app_config.dart';
+import '../repositories/firebase/firebase_patrol_repository.dart';
+import '../repositories/firebase/firebase_help_places_repository.dart';
+import '../repositories/firebase/firebase_trip_repository.dart';
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError('Initialize sharedPreferencesProvider in main.dart');
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  if (AppConfig.useFirebase) {
-    return FirebaseAuthRepository();
-  }
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return MockAuthRepository(prefs);
+  return FirebaseAuthRepository();
 });
 
 final sosRepositoryProvider = Provider<SosRepository>((ref) {
-  if (AppConfig.useFirebase) {
-    return FirebaseSosRepository();
-  }
-  final authRepo = ref.watch(authRepositoryProvider);
-  return MockSosRepository(authRepo);
+  return FirebaseSosRepository();
 });
 
 final reportRepositoryProvider = Provider<ReportRepository>((ref) {
-  if (AppConfig.useFirebase) {
-    return FirebaseReportRepository();
-  }
-  return MockReportRepository();
+  return FirebaseReportRepository();
 });
 
 final patrolRepositoryProvider = Provider<PatrolRepository>((ref) {
-  return MockPatrolRepository();
+  return FirebasePatrolRepository();
 });
 
 final helpPlacesRepositoryProvider = Provider<HelpPlacesRepository>((ref) {
-  return MockHelpPlacesRepository();
+  return FirebaseHelpPlacesRepository();
 });
 
 final tripRepositoryProvider = Provider<TripRepository>((ref) {
-  return MockTripRepository();
+  return FirebaseTripRepository();
 });

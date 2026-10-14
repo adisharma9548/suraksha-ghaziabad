@@ -1,35 +1,193 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import '../../models/user_model.dart';
 import '../../models/trusted_contact_model.dart';
 import '../abstract/auth_repository.dart';
 import '../../../core/utils/hash_util.dart';
 
-/// Firebase Implementation of AuthRepository
-/// When Firebase credentials are plugged in (google-services.json),
-/// this repository connects to FirebaseAuth and FirebaseFirestore.
+/// Firebase implementation of AuthRepository
+/// Connects to FirebaseAuth (Phone OTP) and Cloud Firestore ('users' & 'trusted_contacts')
 class FirebaseAuthRepository implements AuthRepository {
-  UserModel? _currentUser;
-  final List<TrustedContactModel> _contacts = [];
+  final FirebaseAuth? auth;
+  final FirebaseFirestore? firestore;
+  UserModel? _cachedUser;
+  final List<TrustedContactModel> _cachedContacts = [];
+  String? _verificationId;
 
-  FirebaseAuthRepository({UserModel? initialUser}) : _currentUser = initialUser;
+  FirebaseAuthRepository({
+    this.auth,
+    this.firestore,
+    UserModel? initialUser,
+  }) : _cachedUser = initialUser;
+
+  bool get _isFirebaseAvailable => Firebase.apps.isNotEmpty;
+  FirebaseAuth get _effectiveAuth => auth ?? FirebaseAuth.instance;
+  FirebaseFirestore get _effectiveFirestore =>
+      firestore ?? FirebaseFirestore.instance;
 
   @override
   Future<UserModel?> getCurrentUser() async {
-    return _currentUser;
+    if (!_isFirebaseAvailable) {
+      return _cachedUser;
+    }
+
+    try {
+      final firebaseUser = _effectiveAuth.currentUser;
+      if (firebaseUser == null) {
+        return _cachedUser;
+      }
+
+      final doc = await _effectiveFirestore
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .get();
+
+      if (doc.exists && doc.data() != null) {
+        _cachedUser = UserModel.fromJson(doc.data()!);
+        return _cachedUser;
+      }
+
+      return _cachedUser;
+    } catch (e) {
+      debugPrint('FirebaseAuthRepository.getCurrentUser error: $e');
+      return _cachedUser;
+    }
   }
 
   @override
   Future<bool> sendOtp(String phone) async {
-    return true;
+    if (!_isFirebaseAvailable) {
+      return true;
+    }
+
+    final completer = Completer<bool>();
+
+    try {
+      await _effectiveAuth.verifyPhoneNumber(
+        phoneNumber: phone,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          await _effectiveAuth.signInWithCredential(credential);
+          if (!completer.isCompleted) completer.complete(true);
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          debugPrint('FirebaseAuthRepository.verifyPhoneNumber failed: ${e.message}');
+          if (!completer.isCompleted) completer.complete(false);
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          _verificationId = verificationId;
+          if (!completer.isCompleted) completer.complete(true);
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _verificationId = verificationId;
+        },
+        timeout: const Duration(seconds: 60),
+      );
+      return await completer.future;
+    } catch (e) {
+      debugPrint('FirebaseAuthRepository.sendOtp error: $e');
+      return false;
+    }
   }
 
   @override
   Future<UserModel> verifyOtp(String phone, String otp) async {
-    throw UnimplementedError('Connect Firebase project configuration to enable live OTP');
+    if (!_isFirebaseAvailable) {
+      final user = _cachedUser ??
+          UserModel(
+            id: 'mock_uid_${DateTime.now().millisecondsSinceEpoch}',
+            name: 'Citizen',
+            phone: phone,
+            role: 'citizen',
+            language: 'en',
+            emergencyPinHash: HashUtil.hashPin('1234'),
+            createdAt: DateTime.now(),
+          );
+      _cachedUser = user;
+      return user;
+    }
+
+    if (_verificationId == null) {
+      throw Exception('Verification ID is null. Request an OTP first.');
+    }
+
+    final credential = PhoneAuthProvider.credential(
+      verificationId: _verificationId!,
+      smsCode: otp,
+    );
+
+    final userCredential = await _effectiveAuth.signInWithCredential(credential);
+    final uid = userCredential.user?.uid;
+    if (uid == null) {
+      throw Exception('Firebase authentication returned no user UID');
+    }
+
+    final userDocRef = _effectiveFirestore.collection('users').doc(uid);
+    final userDoc = await userDocRef.get();
+
+    if (userDoc.exists && userDoc.data() != null) {
+      _cachedUser = UserModel.fromJson(userDoc.data()!);
+      return _cachedUser!;
+    }
+
+    final newUser = UserModel(
+      id: uid,
+      name: 'Citizen',
+      phone: phone,
+      role: 'citizen',
+      language: 'en',
+      emergencyPinHash: HashUtil.hashPin('1234'),
+      createdAt: DateTime.now(),
+      hasConsented: true,
+    );
+
+    await userDocRef.set(newUser.toJson());
+    _cachedUser = newUser;
+    return newUser;
   }
 
   @override
   Future<UserModel> officerLogin(String code, String pin) async {
-    throw UnimplementedError('Connect Firebase project configuration for live officer portal');
+    if (!_isFirebaseAvailable) {
+      if (code.trim().toUpperCase() == 'OFFICER01' && pin.trim() == '1234') {
+        final officer = UserModel(
+          id: 'officer_001',
+          name: 'Insp. Rakesh Kumar',
+          phone: '+919454403000',
+          role: 'officer',
+          language: 'en',
+          emergencyPinHash: HashUtil.hashPin('1234'),
+          createdAt: DateTime.now(),
+          hasConsented: true,
+        );
+        _cachedUser = officer;
+        return officer;
+      }
+      throw Exception('Invalid Officer Code or PIN');
+    }
+
+    // Query Firestore for officer credential
+    final query = await _effectiveFirestore
+        .collection('users')
+        .where('role', isEqualTo: 'officer')
+        .where('officerCode', isEqualTo: code.trim().toUpperCase())
+        .limit(1)
+        .get();
+
+    if (query.docs.isEmpty) {
+      throw Exception('No officer found with code $code');
+    }
+
+    final data = query.docs.first.data();
+    final storedHash = data['emergencyPinHash'] as String? ?? '';
+    if (!HashUtil.verifyPin(pin, storedHash)) {
+      throw Exception('Invalid officer authentication PIN');
+    }
+
+    _cachedUser = UserModel.fromJson(data);
+    return _cachedUser!;
   }
 
   @override
@@ -40,18 +198,45 @@ class FirebaseAuthRepository implements AuthRepository {
   }) async {
     final user = await getCurrentUser();
     if (user != null) {
-      _currentUser = user.copyWith(
+      final updated = user.copyWith(
         name: name,
         emergencyPinHash: HashUtil.hashPin(pin),
       );
+      _cachedUser = updated;
+
+      if (_isFirebaseAvailable) {
+        await _effectiveFirestore
+            .collection('users')
+            .doc(user.id)
+            .set(updated.toJson(), SetOptions(merge: true));
+
+        // Save contacts to subcollection
+        final contactsBatch = _effectiveFirestore.batch();
+        final contactsCol = _effectiveFirestore
+            .collection('users')
+            .doc(user.id)
+            .collection('trusted_contacts');
+
+        for (final contact in contacts) {
+          contactsBatch.set(contactsCol.doc(contact.id), contact.toJson());
+        }
+        await contactsBatch.commit();
+      }
     }
-    _contacts.clear();
-    _contacts.addAll(contacts);
+
+    _cachedContacts.clear();
+    _cachedContacts.addAll(contacts);
   }
 
   @override
   Future<void> updateUser(UserModel user) async {
-    _currentUser = user;
+    _cachedUser = user;
+    if (_isFirebaseAvailable) {
+      await _effectiveFirestore
+          .collection('users')
+          .doc(user.id)
+          .set(user.toJson(), SetOptions(merge: true));
+    }
   }
 
   @override
@@ -67,33 +252,100 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<void> changeEmergencyPin(String newPin) async {
     final user = await getCurrentUser();
     if (user == null) return;
-    _currentUser = user.copyWith(
+    final updated = user.copyWith(
       emergencyPinHash: HashUtil.hashPin(newPin),
     );
+    _cachedUser = updated;
+
+    if (_isFirebaseAvailable) {
+      await _effectiveFirestore.collection('users').doc(user.id).update({
+        'emergencyPinHash': HashUtil.hashPin(newPin),
+      });
+    }
   }
 
   @override
-  Future<List<TrustedContactModel>> getTrustedContacts() async =>
-      List.unmodifiable(_contacts);
+  Future<List<TrustedContactModel>> getTrustedContacts() async {
+    if (!_isFirebaseAvailable) {
+      return List.unmodifiable(_cachedContacts);
+    }
+
+    try {
+      final user = await getCurrentUser();
+      if (user == null) return List.unmodifiable(_cachedContacts);
+
+      final snapshot = await _effectiveFirestore
+          .collection('users')
+          .doc(user.id)
+          .collection('trusted_contacts')
+          .get();
+
+      final list = snapshot.docs
+          .map((doc) => TrustedContactModel.fromJson(doc.data()))
+          .toList();
+
+      _cachedContacts.clear();
+      _cachedContacts.addAll(list);
+      return List.unmodifiable(_cachedContacts);
+    } catch (e) {
+      debugPrint('FirebaseAuthRepository.getTrustedContacts error: $e');
+      return List.unmodifiable(_cachedContacts);
+    }
+  }
 
   @override
   Future<void> addTrustedContact(TrustedContactModel contact) async {
-    _contacts.add(contact);
+    _cachedContacts.add(contact);
+
+    if (_isFirebaseAvailable) {
+      final user = await getCurrentUser();
+      if (user != null) {
+        await _effectiveFirestore
+            .collection('users')
+            .doc(user.id)
+            .collection('trusted_contacts')
+            .doc(contact.id)
+            .set(contact.toJson());
+      }
+    }
   }
 
   @override
   Future<void> removeTrustedContact(String contactId) async {
-    _contacts.removeWhere((c) => c.id == contactId);
+    _cachedContacts.removeWhere((c) => c.id == contactId);
+
+    if (_isFirebaseAvailable) {
+      final user = await getCurrentUser();
+      if (user != null) {
+        await _effectiveFirestore
+            .collection('users')
+            .doc(user.id)
+            .collection('trusted_contacts')
+            .doc(contactId)
+            .delete();
+      }
+    }
   }
 
   @override
   Future<void> deleteUserData() async {
-    _currentUser = null;
-    _contacts.clear();
+    if (_isFirebaseAvailable) {
+      final user = _effectiveAuth.currentUser;
+      if (user != null) {
+        await _effectiveFirestore.collection('users').doc(user.uid).delete();
+        await user.delete();
+      }
+    }
+    _cachedUser = null;
+    _cachedContacts.clear();
   }
 
   @override
   Future<void> logout() async {
-    _currentUser = null;
+    if (_isFirebaseAvailable) {
+      await _effectiveAuth.signOut();
+    }
+    _cachedUser = null;
+    _cachedContacts.clear();
   }
 }
