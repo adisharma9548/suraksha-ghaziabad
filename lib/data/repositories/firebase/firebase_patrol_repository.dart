@@ -12,7 +12,11 @@ class FirebasePatrolRepository implements PatrolRepository {
   final StreamController<List<PatrolUnitModel>> _unitsController =
       StreamController<List<PatrolUnitModel>>.broadcast();
 
-  FirebasePatrolRepository({this.firestore});
+  FirebasePatrolRepository({this.firestore, List<PatrolUnitModel>? initialUnits}) {
+    if (initialUnits != null) {
+      _cachedUnits.addAll(initialUnits);
+    }
+  }
 
   bool get _isFirebaseAvailable => Firebase.apps.isNotEmpty;
   FirebaseFirestore get _effectiveFirestore =>
