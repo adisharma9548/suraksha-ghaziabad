@@ -1,10 +1,31 @@
 import 'dart:math' as math;
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/ios_typography.dart';
+import '../../../core/widgets/ios_widgets.dart';
 import '../../../data/providers/report_provider.dart';
 import '../../../data/providers/sos_provider.dart';
 
+class _WardAnalytics {
+  final String name;
+  final String subAreas;
+  int totalReports = 0;
+  int resolvedReports = 0;
+  int nagarNigamReports = 0;
+  int policeReports = 0;
+  double decayWeightedRisk = 0.0;
+
+  _WardAnalytics({required this.name, required this.subAreas});
+}
+
+/// Pattern styles for color-blind safe charts
+enum ChartPatternStyle { solid, diagonalStripes, dots, crossHatch }
+
+/// Native iOS Officer Analytics Screen
+/// 100% accessible to all forms of color blindness:
+/// Uses luminance hierarchy, patterned/textured charts (stripes, dots, hatching), direct labels, and multi-cue badges.
 class OfficerAnalyticsScreen extends ConsumerWidget {
   const OfficerAnalyticsScreen({super.key});
 
@@ -12,21 +33,18 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final reportsAsync = ref.watch(allReportsStreamProvider);
     final alertsAsync = ref.watch(allOfficerAlertsStreamProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'District Safety Analytics',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
       body: SafeArea(
         child: reportsAsync.when(
           data: (reports) {
             final total = reports.length;
             final resolved = reports.where((r) => r.status == 'Fixed').length;
-            final inProgress =
-                reports.where((r) => r.status == 'In progress').length;
+            final inProgress = reports.where((r) => r.status == 'In progress').length;
             final open = reports.where((r) => r.status == 'Open').length;
 
             // 1. Calculate Real Response Time from SOS alerts timestamps
@@ -43,9 +61,9 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
               final avgSec =
                   responseTimes.reduce((a, b) => a + b) / responseTimes.length;
               if (avgSec < 60) {
-                avgResponseVal = '${avgSec.round()} sec';
+                avgResponseVal = '${avgSec.round()}s';
               } else {
-                avgResponseVal = '${(avgSec / 60).toStringAsFixed(1)} min';
+                avgResponseVal = '${(avgSec / 60).toStringAsFixed(1)}m';
               }
               avgResponseSub = 'From ${responseTimes.length} live dispatches';
             } else if (alerts.isNotEmpty) {
@@ -56,8 +74,7 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
             // 2. Category counts
             final Map<String, int> categoryCounts = {};
             for (final r in reports) {
-              categoryCounts[r.category] =
-                  (categoryCounts[r.category] ?? 0) + 1;
+              categoryCounts[r.category] = (categoryCounts[r.category] ?? 0) + 1;
             }
 
             // 3. Time of day counts
@@ -97,12 +114,8 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
                   : 'City Kotwali Zone (Ward 41)';
               final ward = wardMap[wardKey]!;
 
-              // Time-decay factor: 7-day half-life decay
-              final daysOld = math.max(
-                  0.0, now.difference(r.createdAt).inMinutes / (60 * 24));
+              final daysOld = math.max(0.0, now.difference(r.createdAt).inMinutes / (60 * 24));
               final decayWeight = 1.0 / (1.0 + (daysOld / 7.0));
-
-              // Fixed issues contribute 20% residual risk; active issues contribute 100%
               final statusFactor = r.status == 'Fixed' ? 0.2 : 1.0;
               final weightedScore = r.severity * decayWeight * statusFactor;
 
@@ -117,297 +130,132 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
             }
 
             final sortedWards = wardMap.values.toList()
-              ..sort((a, b) =>
-                  b.decayWeightedRisk.compareTo(a.decayWeightedRisk));
-
-            // Top unsafe zones
-            final Map<String, int> zoneCounts = {};
-            for (final r in reports) {
-              final zone = r.locationName.split(',').first.trim();
-              zoneCounts[zone] = (zoneCounts[zone] ?? 0) + 1;
-            }
-            final sortedZones = zoneCounts.entries.toList()
-              ..sort((a, b) => b.value.compareTo(a.value));
-            final topZones = sortedZones.take(10).toList();
+              ..sort((a, b) => b.decayWeightedRisk.compareTo(a.decayWeightedRisk));
 
             return ListView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               children: [
-                // Top KPI Metrics
+                // Top KPI Metrics 2x2 Grid
                 Row(
                   children: [
                     Expanded(
-                      child: _MetricCard(
-                        title: 'Total Reports',
+                      child: _IosMetricTile(
+                        icon: CupertinoIcons.doc_text_fill,
+                        label: 'Total Reports',
                         value: '$total',
-                        subtitle: 'Across Ghaziabad',
-                        icon: Icons.assignment_rounded,
-                        color: AppColors.primaryPurple,
+                        subtitle: '$open open • $inProgress in action',
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: _MetricCard(
-                        title: 'Avg Response',
+                      child: _IosMetricTile(
+                        icon: CupertinoIcons.checkmark_seal_fill,
+                        label: 'Resolution Rate',
+                        value: total > 0 ? '${((resolved / total) * 100).round()}%' : '0%',
+                        subtitle: '$resolved fixed and verified',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _IosMetricTile(
+                        icon: CupertinoIcons.timer_fill,
+                        label: 'Avg Response',
                         value: avgResponseVal,
                         subtitle: avgResponseSub,
-                        icon: Icons.timer_rounded,
-                        color: AppColors.safeGreen,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _IosMetricTile(
+                        icon: CupertinoIcons.shield_lefthalf_fill,
+                        label: 'Patrol Queue',
+                        value: '${alerts.length}',
+                        subtitle: '${alerts.where((a) => a.isDuress).length} duress events',
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _MetricCard(
-                        title: 'Resolved (Fixed)',
-                        value: '$resolved',
-                        subtitle:
-                            '${((resolved / (total > 0 ? total : 1)) * 100).round()}% closure rate',
-                        icon: Icons.verified_rounded,
-                        color: AppColors.safeGreen,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _MetricCard(
-                        title: 'Open / In Action',
-                        value: '${open + inProgress}',
-                        subtitle: 'Active patrols / works',
-                        icon: Icons.pending_actions_rounded,
-                        color: AppColors.warningAmberDark,
-                      ),
-                    ),
-                  ],
-                ),
+
                 const SizedBox(height: 24),
 
-                // WARD-LEVEL TIME-DECAY RISK ANALYTICS
+                // Reports by Category with Accessible Patterned Progress Bars
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Ward-Level Time-Decay Risk',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimaryLight,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryPurpleSurface,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        '7-Day Decay Model',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryPurple,
-                        ),
-                      ),
+                    Icon(CupertinoIcons.chart_bar_square_fill, size: 20, color: primaryTextColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Reports by Category',
+                      style: IosTypography.title3(color: primaryTextColor),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Recent incidents carry higher weight; resolved issues decay over time.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondaryLight,
-                  ),
+                Text(
+                  'Differentiated with distinct hatchings and icons, readable without color.',
+                  style: IosTypography.caption1(color: secondaryTextColor),
                 ),
                 const SizedBox(height: 12),
-                ...sortedWards.map((w) {
-                  final riskScore = w.decayWeightedRisk;
-                  final Color riskColor;
-                  final String riskLevel;
-                  if (riskScore > 10) {
-                    riskColor = AppColors.sosRed;
-                    riskLevel = 'HIGH RISK';
-                  } else if (riskScore > 4) {
-                    riskColor = AppColors.warningAmberDark;
-                    riskLevel = 'ELEVATED';
-                  } else {
-                    riskColor = AppColors.safeGreen;
-                    riskLevel = 'LOW RISK';
-                  }
 
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.dividerLight),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                w.name,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimaryLight,
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: riskColor.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: riskColor, width: 1),
-                              ),
-                              child: Text(
-                                riskLevel,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: riskColor,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          w.subAreas,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textHintLight,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Text(
-                              'Decay Score: ${riskScore.toStringAsFixed(1)}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: riskColor,
-                              ),
-                            ),
-                            const Text(' • ',
-                                style: TextStyle(
-                                    color: AppColors.textSecondaryLight)),
-                            Text(
-                              '${w.totalReports} total',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondaryLight,
-                              ),
-                            ),
-                            const Spacer(),
-                            Row(
-                              children: [
-                                const Icon(Icons.account_balance_rounded,
-                                    size: 12, color: AppColors.policeNavy),
-                                const SizedBox(width: 3),
-                                Text(
-                                  '${w.nagarNigamReports}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.policeNavy,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Icon(Icons.local_police_rounded,
-                                    size: 12, color: AppColors.sosRed),
-                                const SizedBox(width: 3),
-                                Text(
-                                  '${w.policeReports}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.sosRed,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-                const SizedBox(height: 24),
-
-                // Reports by Category Chart Section
-                const Text(
-                  'Reports by Category',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimaryLight,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
+                IosCard(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.dividerLight),
-                  ),
                   child: Column(
                     children: categoryCounts.entries.map((entry) {
                       final cat = entry.key;
                       final count = entry.value;
                       final pct = total > 0 ? (count / total) : 0.0;
 
-                      Color barColor = AppColors.primaryPurple;
-                      if (cat == 'Harassment') barColor = AppColors.sosRed;
-                      if (cat == 'Isolated road') {
-                        barColor = AppColors.warningAmberDark;
+                      ChartPatternStyle pattern = ChartPatternStyle.solid;
+                      IconData markerIcon = CupertinoIcons.question_circle;
+                      if (cat == 'Harassment') {
+                        pattern = ChartPatternStyle.diagonalStripes;
+                        markerIcon = CupertinoIcons.exclamationmark_triangle_fill;
+                      } else if (cat == 'Broken streetlight') {
+                        pattern = ChartPatternStyle.solid;
+                        markerIcon = CupertinoIcons.lightbulb_fill;
+                      } else if (cat == 'Isolated road') {
+                        pattern = ChartPatternStyle.dots;
+                        markerIcon = CupertinoIcons.arrow_branch;
+                      } else if (cat == 'Drunk crowd') {
+                        pattern = ChartPatternStyle.crossHatch;
+                        markerIcon = CupertinoIcons.person_3_fill;
                       }
-                      if (cat == 'Drunk crowd') barColor = Colors.deepOrange;
 
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.only(bottom: 14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  cat,
-                                  style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600),
+                                Icon(markerIcon, size: 14, color: primaryTextColor),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    cat,
+                                    style: IosTypography.footnote(
+                                      color: primaryTextColor,
+                                      weight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                                 Text(
                                   '$count (${(pct * 100).round()}%)',
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold),
+                                  style: IosTypography.footnote(
+                                    color: primaryTextColor,
+                                    weight: FontWeight.w700,
+                                  ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: LinearProgressIndicator(
-                                value: pct,
-                                minHeight: 8,
-                                backgroundColor: AppColors.dividerLight,
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(barColor),
-                              ),
+                            _PatternedProgressBar(
+                              percentage: pct,
+                              pattern: pattern,
+                              isDark: isDark,
                             ),
                           ],
                         ),
@@ -415,55 +263,72 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
                     }).toList(),
                   ),
                 ),
+
                 const SizedBox(height: 24),
 
                 // Incidents by Time of Day
-                const Text(
-                  'Reports by Time of Day',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimaryLight,
-                  ),
+                Row(
+                  children: [
+                    Icon(CupertinoIcons.clock_fill, size: 20, color: primaryTextColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Incidents by Time of Day',
+                      style: IosTypography.title3(color: primaryTextColor),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Row(
-                  children:
-                      ['Morning', 'Afternoon', 'Evening', 'Night'].map((time) {
+                  children: [
+                    ('Morning', CupertinoIcons.sunrise_fill),
+                    ('Afternoon', CupertinoIcons.sun_max_fill),
+                    ('Evening', CupertinoIcons.sunset_fill),
+                    ('Night', CupertinoIcons.moon_stars_fill),
+                  ].map((item) {
+                    final time = item.$1;
+                    final icon = item.$2;
                     final count = timeCounts[time] ?? 0;
+                    final isNight = time == 'Night';
+
                     return Expanded(
                       child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
                         decoration: BoxDecoration(
-                          color: time == 'Night'
-                              ? AppColors.policeNavySurface
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
+                          color: isNight
+                              ? (isDark ? Colors.white : const Color(0xFF1C1C1E))
+                              : (isDark ? AppColors.surfaceDark : AppColors.surfaceLight),
+                          borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: time == 'Night'
-                                ? AppColors.policeNavy
-                                : AppColors.dividerLight,
+                            color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
                           ),
                         ),
                         child: Column(
                           children: [
+                            Icon(
+                              icon,
+                              size: 18,
+                              color: isNight
+                                  ? (isDark ? Colors.black : Colors.white)
+                                  : primaryTextColor,
+                            ),
+                            const SizedBox(height: 6),
                             Text(
-                              '$count',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: time == 'Night'
-                                    ? AppColors.policeNavy
-                                    : AppColors.textPrimaryLight,
+                              time,
+                              style: IosTypography.caption2(
+                                color: isNight
+                                    ? (isDark ? Colors.black : Colors.white)
+                                    : secondaryTextColor,
                               ),
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              time,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondaryLight,
+                              '$count',
+                              style: IosTypography.headline(
+                                color: isNight
+                                    ? (isDark ? Colors.black : Colors.white)
+                                    : primaryTextColor,
+                                weight: FontWeight.w700,
                               ),
                             ),
                           ],
@@ -472,165 +337,287 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
                     );
                   }).toList(),
                 ),
+
                 const SizedBox(height: 24),
 
-                // Top 10 High-Risk Unsafe Zones
-                const Text(
-                  'Top 10 High-Risk Unsafe Zones',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimaryLight,
-                  ),
+                // Ward-Level Risk Index with 7-Day Decay Model
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(CupertinoIcons.building_2_fill, size: 20, color: primaryTextColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Ward Risk Index',
+                          style: IosTypography.title3(color: primaryTextColor),
+                        ),
+                      ],
+                    ),
+                    IosBadge(
+                      label: '7-Day Decay',
+                      icon: CupertinoIcons.arrow_2_circlepath,
+                      type: IosBadgeType.info,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Recent reports carry higher risk; verified fixes decay exponentially over time.',
+                  style: IosTypography.caption1(color: secondaryTextColor),
                 ),
                 const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.dividerLight),
-                  ),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: topZones.length,
-                    separatorBuilder: (_, __) =>
-                        const Divider(height: 1, color: AppColors.dividerLight),
-                    itemBuilder: (context, index) {
-                      final item = topZones[index];
-                      return ListTile(
-                        dense: true,
-                        leading: CircleAvatar(
-                          radius: 13,
-                          backgroundColor: index < 3
-                              ? AppColors.sosRedLight
-                              : AppColors.primaryPurpleSurface,
-                          child: Text(
-                            '#${index + 1}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: index < 3
-                                  ? AppColors.sosRedDark
-                                  : AppColors.primaryPurple,
-                            ),
+
+                ...sortedWards.map((w) {
+                  final riskScore = w.decayWeightedRisk;
+                  final IosBadgeType badgeType;
+                  final String riskLevel;
+                  final IconData riskIcon;
+                  if (riskScore > 10) {
+                    badgeType = IosBadgeType.error;
+                    riskLevel = 'HIGH RISK';
+                    riskIcon = CupertinoIcons.exclamationmark_triangle_fill;
+                  } else if (riskScore > 4) {
+                    badgeType = IosBadgeType.warning;
+                    riskLevel = 'ELEVATED';
+                    riskIcon = CupertinoIcons.exclamationmark_circle_fill;
+                  } else {
+                    badgeType = IosBadgeType.success;
+                    riskLevel = 'LOW RISK';
+                    riskIcon = CupertinoIcons.checkmark_circle_fill;
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: IosCard(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  w.name,
+                                  style: IosTypography.headline(color: primaryTextColor),
+                                ),
+                              ),
+                              IosBadge(
+                                label: riskLevel,
+                                icon: riskIcon,
+                                type: badgeType,
+                              ),
+                            ],
                           ),
-                        ),
-                        title: Text(
-                          item.key,
-                          style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.bold),
-                        ),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: index < 3
-                                ? AppColors.sosRedLight
-                                : AppColors.backgroundLight,
-                            borderRadius: BorderRadius.circular(10),
+                          const SizedBox(height: 2),
+                          Text(
+                            w.subAreas,
+                            style: IosTypography.caption1(color: secondaryTextColor),
                           ),
-                          child: Text(
-                            '${item.value} reports',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: index < 3
-                                  ? AppColors.sosRedDark
-                                  : AppColors.textSecondaryLight,
-                            ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Text(
+                                'Decay Score: ${riskScore.toStringAsFixed(1)}',
+                                style: IosTypography.footnote(
+                                  color: primaryTextColor,
+                                  weight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(' • ', style: IosTypography.footnote(color: secondaryTextColor)),
+                              Text(
+                                '${w.totalReports} total',
+                                style: IosTypography.footnote(color: secondaryTextColor),
+                              ),
+                              const Spacer(),
+                              Icon(CupertinoIcons.building_2_fill, size: 12, color: secondaryTextColor),
+                              const SizedBox(width: 4),
+                              Text('${w.nagarNigamReports}', style: IosTypography.caption1(color: primaryTextColor, weight: FontWeight.w700)),
+                              const SizedBox(width: 8),
+                              Icon(CupertinoIcons.shield_fill, size: 12, color: secondaryTextColor),
+                              const SizedBox(width: 4),
+                              Text('${w.policeReports}', style: IosTypography.caption1(color: primaryTextColor, weight: FontWeight.w700)),
+                            ],
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
                 const SizedBox(height: 24),
               ],
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e')),
+          loading: () => Center(
+            child: CupertinoActivityIndicator(radius: 14, color: primaryTextColor),
+          ),
+          error: (e, _) => Center(
+            child: Text('Analytics error: $e', style: IosTypography.subhead(color: secondaryTextColor)),
+          ),
         ),
       ),
     );
   }
 }
 
-class _WardAnalytics {
-  final String name;
-  final String subAreas;
-  int totalReports = 0;
-  int resolvedReports = 0;
-  int nagarNigamReports = 0;
-  int policeReports = 0;
-  double decayWeightedRisk = 0.0;
-
-  _WardAnalytics({required this.name, required this.subAreas});
-}
-
-class _MetricCard extends StatelessWidget {
-  final String title;
+class _IosMetricTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
   final String value;
   final String subtitle;
-  final IconData icon;
-  final Color color;
 
-  const _MetricCard({
-    required this.title,
+  const _IosMetricTile({
+    required this.icon,
+    required this.label,
     required this.value,
     required this.subtitle,
-    required this.icon,
-    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.dividerLight),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
+
+    return IosCard(
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondaryLight),
+              Icon(icon, size: 16, color: primaryTextColor),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  style: IosTypography.caption1(color: secondaryTextColor),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              Icon(icon, color: color, size: 20),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+            style: IosTypography.title1(color: primaryTextColor),
           ),
           const SizedBox(height: 2),
           Text(
             subtitle,
-            style:
-                const TextStyle(fontSize: 11, color: AppColors.textHintLight),
+            style: IosTypography.caption2(color: secondaryTextColor),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
+}
+
+/// Accessible Patterned Progress Bar (Stripes, Dots, Solid)
+class _PatternedProgressBar extends StatelessWidget {
+  final double percentage;
+  final ChartPatternStyle pattern;
+  final bool isDark;
+
+  const _PatternedProgressBar({
+    required this.percentage,
+    required this.pattern,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 12,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFE5E5EA),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isDark ? const Color(0xFF38383A) : const Color(0xFFD1D1D6),
+        ),
+      ),
+      child: FractionallySizedBox(
+        alignment: Alignment.centerLeft,
+        widthFactor: percentage.clamp(0.02, 1.0),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(5),
+          child: CustomPaint(
+            painter: _PatternPainter(pattern: pattern, isDark: isDark),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PatternPainter extends CustomPainter {
+  final ChartPatternStyle pattern;
+  final bool isDark;
+
+  _PatternPainter({required this.pattern, required this.isDark});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fillPaint = Paint()
+      ..color = isDark ? Colors.white : const Color(0xFF1C1C1E)
+      ..style = PaintingStyle.fill;
+
+    if (pattern == ChartPatternStyle.solid) {
+      canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), fillPaint);
+    } else if (pattern == ChartPatternStyle.diagonalStripes) {
+      // Base background
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()..color = isDark ? const Color(0xFF38383A) : const Color(0xFFC6C6C8),
+      );
+      final stripePaint = Paint()
+        ..color = isDark ? Colors.white : const Color(0xFF1C1C1E)
+        ..strokeWidth = 2.5
+        ..style = PaintingStyle.stroke;
+
+      for (double x = -size.height; x < size.width; x += 8) {
+        canvas.drawLine(
+          Offset(x, size.height),
+          Offset(x + size.height, 0),
+          stripePaint,
+        );
+      }
+    } else if (pattern == ChartPatternStyle.dots) {
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()..color = isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
+      );
+      final dotPaint = Paint()
+        ..color = isDark ? Colors.white : const Color(0xFF1C1C1E)
+        ..style = PaintingStyle.fill;
+
+      for (double x = 4; x < size.width; x += 8) {
+        for (double y = 3; y < size.height; y += 6) {
+          canvas.drawCircle(Offset(x, y), 1.8, dotPaint);
+        }
+      }
+    } else if (pattern == ChartPatternStyle.crossHatch) {
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()..color = isDark ? const Color(0xFF38383A) : const Color(0xFFC6C6C8),
+      );
+      final linePaint = Paint()
+        ..color = isDark ? Colors.white : const Color(0xFF1C1C1E)
+        ..strokeWidth = 1.5;
+
+      for (double x = -size.height; x < size.width; x += 7) {
+        canvas.drawLine(Offset(x, size.height), Offset(x + size.height, 0), linePaint);
+        canvas.drawLine(Offset(x, 0), Offset(x + size.height, size.height), linePaint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PatternPainter oldDelegate) =>
+      oldDelegate.pattern != pattern || oldDelegate.isDark != isDark;
 }

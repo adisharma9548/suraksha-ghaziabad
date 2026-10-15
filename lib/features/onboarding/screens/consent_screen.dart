@@ -1,11 +1,16 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/l10n/app_localizations.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/l10n/app_localizations.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/ios_typography.dart';
+import '../../../core/widgets/ios_widgets.dart';
 import '../../../data/providers/repository_providers.dart';
 
+/// Native iOS Consent & Permissions Screen
+/// Transparent privacy disclosure with Apple HIG grouped insets, SF Pro scale, and color-blind safe multi-cue tiles.
 class ConsentScreen extends ConsumerStatefulWidget {
   const ConsentScreen({super.key});
 
@@ -26,227 +31,127 @@ class _ConsentScreenState extends ConsumerState<ConsentScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
       appBar: AppBar(
-        title: Text(l10n.safetyPermissions),
+        title: Text(l10n.safetyPermissions, style: IosTypography.headline(color: primaryTextColor)),
+        backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
+        elevation: 0,
+        centerTitle: true,
       ),
       body: SafeArea(
         child: Column(
           children: [
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.only(bottom: 24),
                 children: [
-                  Text(
-                    l10n.permissionsSubtitle,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      color: AppColors.textSecondaryLight,
-                      height: 1.4,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Text(
+                      l10n.permissionsSubtitle,
+                      style: IosTypography.subhead(color: secondaryTextColor),
                     ),
                   ),
-                  const SizedBox(height: 20),
 
-                  // Location (Highlight: only shared during SOS or Trip)
-                  _PermissionTile(
-                    icon: Icons.location_on_rounded,
-                    iconColor: AppColors.sosRed,
-                    title: l10n.locationPermissionTitle,
-                    description: l10n.locationPermissionDesc,
-                    isCritical: true,
-                  ),
-
-                  // Microphone / Audio
-                  _PermissionTile(
-                    icon: Icons.mic_rounded,
-                    iconColor: AppColors.primaryPurple,
-                    title: l10n.audioPermissionTitle,
-                    description: l10n.audioPermissionDesc,
-                  ),
-
-                  // Offline SMS
-                  _PermissionTile(
-                    icon: Icons.sms_rounded,
-                    iconColor: AppColors.infoBlue,
-                    title: l10n.smsPermissionTitle,
-                    description: l10n.smsPermissionDesc,
-                  ),
-
-                  // Notifications
-                  _PermissionTile(
-                    icon: Icons.notifications_active_rounded,
-                    iconColor: AppColors.warningAmber,
-                    title: l10n.notificationPermissionTitle,
-                    description: l10n.notificationPermissionDesc,
-                  ),
-
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryPurpleSurface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppColors.primaryPurple.withOpacity(0.3),
-                      ),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(
-                          Icons.verified_user_rounded,
-                          color: AppColors.primaryPurple,
-                          size: 24,
+                  // Inset Section: Permissions
+                  IosGroupedSection(
+                    header: 'REQUIRED SAFETY CAPABILITIES',
+                    footer: 'Location is streamed strictly during an active emergency SOS or safe trip, never continuously.',
+                    children: [
+                      IosListTile(
+                        leadingIcon: CupertinoIcons.location_fill,
+                        title: l10n.locationPermissionTitle,
+                        subtitle: l10n.locationPermissionDesc,
+                        trailing: IosBadge(
+                          label: 'Mandatory',
+                          icon: CupertinoIcons.exclamationmark_circle_fill,
+                          type: IosBadgeType.warning,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            AppConstants.policeIntegrationNotice,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.primaryPurpleDark,
-                              height: 1.4,
+                      ),
+                      IosListTile(
+                        leadingIcon: CupertinoIcons.mic_fill,
+                        title: l10n.audioPermissionTitle,
+                        subtitle: l10n.audioPermissionDesc,
+                      ),
+                      IosListTile(
+                        leadingIcon: CupertinoIcons.bubble_left_bubble_right_fill,
+                        title: l10n.smsPermissionTitle,
+                        subtitle: l10n.smsPermissionDesc,
+                      ),
+                      IosListTile(
+                        showDivider: false,
+                        leadingIcon: CupertinoIcons.bell_fill,
+                        title: l10n.notificationPermissionTitle,
+                        subtitle: l10n.notificationPermissionDesc,
+                      ),
+                    ],
+                  ),
+
+                  // Notice Card: Police & Civic Disclaimer
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: IosCard(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            CupertinoIcons.shield_lefthalf_fill,
+                            size: 20,
+                            color: primaryTextColor,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              AppConstants.policeIntegrationNotice,
+                              style: IosTypography.footnote(
+                                color: secondaryTextColor,
+                                height: 1.35,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: _agreedToTerms,
-                    onChanged: (val) {
-                      setState(() {
-                        _agreedToTerms = val ?? false;
-                      });
-                    },
-                    activeColor: AppColors.primaryPurple,
-                    title: Text(
-                      l10n.consentDisclaimer,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textPrimaryLight,
+                        ],
                       ),
                     ),
-                    controlAffinity: ListTileControlAffinity.leading,
+                  ),
+
+                  // Consent Agreement Inset Tile
+                  IosGroupedSection(
+                    children: [
+                      IosListTile(
+                        showDivider: false,
+                        leadingIcon: CupertinoIcons.checkmark_shield_fill,
+                        title: 'I acknowledge the privacy terms',
+                        subtitle: l10n.consentDisclaimer,
+                        trailing: CupertinoSwitch(
+                          value: _agreedToTerms,
+                          activeColor: primaryTextColor,
+                          onChanged: (val) => setState(() => _agreedToTerms = val),
+                        ),
+                        onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
+
+            // Accept and Continue Button
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: ElevatedButton(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: IosButton(
+                text: l10n.acceptAndContinue,
+                icon: CupertinoIcons.checkmark_alt,
                 onPressed: _agreedToTerms ? _handleAccept : null,
-                child: Text(l10n.acceptAndContinue),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _PermissionTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String description;
-  final bool isCritical;
-
-  const _PermissionTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.description,
-    this.isCritical = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isCritical
-              ? iconColor.withOpacity(0.4)
-              : AppColors.dividerLight,
-          width: isCritical ? 1.5 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimaryLight,
-                      ),
-                    ),
-                    if (isCritical) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.sosRedLight,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'MANDATORY',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.sosRedDark,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondaryLight,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

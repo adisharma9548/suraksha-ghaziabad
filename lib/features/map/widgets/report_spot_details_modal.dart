@@ -1,6 +1,8 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/ios_typography.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/report_model.dart';
 
@@ -8,17 +10,6 @@ class ReportSpotDetailsModal extends StatelessWidget {
   final ReportModel report;
 
   const ReportSpotDetailsModal({super.key, required this.report});
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Fixed':
-        return AppColors.safeGreen;
-      case 'In progress':
-        return AppColors.warningAmber;
-      default:
-        return AppColors.sosRed;
-    }
-  }
 
   Future<void> _openNavigation() async {
     final uri = Uri.parse(
@@ -30,117 +21,101 @@ class ReportSpotDetailsModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _getStatusColor(report.status);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final separatorColor = isDark ? AppColors.separatorDark : AppColors.separatorLight;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
+
+    final isFixed = report.status == 'Fixed';
+    final isInProgress = report.status == 'In progress';
+    final isOpen = !isFixed && !isInProgress;
+
+    IconData statusIcon;
+    String statusText;
+    if (isFixed) {
+      statusIcon = CupertinoIcons.checkmark_alt_circle_fill;
+      statusText = 'RESOLVED';
+    } else if (isInProgress) {
+      statusIcon = CupertinoIcons.arrow_2_circlepath;
+      statusText = 'IN ACTION';
+    } else {
+      statusIcon = CupertinoIcons.exclamationmark_circle_fill;
+      statusText = 'OPEN';
+    }
 
     return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.dividerLight,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // iOS Sheet Grabber Bar
+            Center(
+              child: Container(
+                width: 36,
+                height: 5,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryPurpleSurface,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  report.category,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryPurple,
-                  ),
+                  color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                  borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: statusColor, width: 1),
-                ),
-                child: Text(
-                  report.status.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            report.locationName,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimaryLight,
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Reported: ${DateFormatter.formatDateTime(report.createdAt)} • ${report.timeOfDay}',
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondaryLight,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.policeNavySurface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.policeNavy.withOpacity(0.2)),
-            ),
-            child: Row(
+            const SizedBox(height: 16),
+
+            // Category & Multi-cue Status Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(
-                  report.routedAuthority == 'NAGAR_NIGAM_GHAZIABAD'
-                      ? Icons.account_balance_rounded
-                      : Icons.local_police_rounded,
-                  size: 16,
-                  color: AppColors.policeNavy,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.secondarySurfaceDark : AppColors.secondarySurfaceLight,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    report.category,
+                    style: IosTypography.caption1(
+                      color: primaryTextColor,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isOpen
+                        ? (isDark ? AppColors.primaryActionDark : AppColors.primaryActionLight)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isDark ? Colors.white : Colors.black,
+                      width: isOpen ? 1.5 : 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        'Routed Authority: ${report.routedAuthorityLabel}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.policeNavy,
-                        ),
+                      Icon(
+                        statusIcon,
+                        size: 13,
+                        color: isOpen
+                            ? (isDark ? AppColors.onPrimaryActionDark : AppColors.onPrimaryActionLight)
+                            : primaryTextColor,
                       ),
+                      const SizedBox(width: 4),
                       Text(
-                        'Status: ${report.acknowledgementStatus} • ${report.wardName}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondaryLight,
+                        statusText,
+                        style: IosTypography.caption2(
+                          color: isOpen
+                              ? (isDark ? AppColors.onPrimaryActionDark : AppColors.onPrimaryActionLight)
+                              : primaryTextColor,
+                          weight: FontWeight.w700,
                         ),
                       ),
                     ],
@@ -148,77 +123,88 @@ class ReportSpotDetailsModal extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.backgroundLight,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.dividerLight),
-            ),
-            child: Text(
-              report.description,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textPrimaryLight,
-                height: 1.4,
-              ),
-            ),
-          ),
-          if (report.adminNote != null && report.adminNote!.isNotEmpty) ...[
             const SizedBox(height: 12),
+
+            Text(
+              report.locationName,
+              style: IosTypography.title2(color: primaryTextColor),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  report.routedAuthority == 'NAGAR_NIGAM_GHAZIABAD'
+                      ? CupertinoIcons.building_2_fill
+                      : CupertinoIcons.shield_fill,
+                  size: 13,
+                  color: secondaryTextColor,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  report.routedAuthorityLabel,
+                  style: IosTypography.caption1(
+                    color: secondaryTextColor,
+                    weight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text('•', style: TextStyle(color: secondaryTextColor)),
+                const SizedBox(width: 8),
+                Text(
+                  DateFormatter.formatRelative(report.createdAt),
+                  style: IosTypography.caption1(color: secondaryTextColor),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // Inset Details Box
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.safeGreenLight,
+                color: isDark ? AppColors.secondarySurfaceDark : AppColors.secondarySurfaceLight,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.safeGreen.withOpacity(0.4)),
+                border: Border.all(color: separatorColor.withOpacity(0.5)),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.verified, color: AppColors.safeGreen, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Police/MCD Action: ${report.adminNote}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.safeGreenDark,
-                      ),
+                  Text(
+                    'Incident Description',
+                    style: IosTypography.footnote(
+                      color: secondaryTextColor,
+                      weight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    report.description,
+                    style: IosTypography.body(color: primaryTextColor),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'GPS: ${report.lat.toStringAsFixed(4)}, ${report.lng.toStringAsFixed(4)}',
+                    style: IosTypography.caption2(
+                      color: isDark ? AppColors.tertiaryTextDark : AppColors.tertiaryTextLight,
                     ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 20),
+
+            // Apple HIG Primary Action: Navigate
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                icon: const Icon(CupertinoIcons.location_fill, size: 18),
+                label: const Text('Open in Apple / Google Maps'),
+                onPressed: _openNavigation,
+              ),
+            ),
           ],
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.directions_rounded),
-                  label: const Text('Directions'),
-                  onPressed: _openNavigation,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.share_location_rounded),
-                  label: const Text('Share Spot'),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Safety spot coordinates copied')),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }

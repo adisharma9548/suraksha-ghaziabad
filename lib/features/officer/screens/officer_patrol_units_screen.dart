@@ -1,12 +1,16 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/ios_typography.dart';
 import '../../../core/utils/distance_util.dart';
+import '../../../core/widgets/ios_widgets.dart';
 import '../../../data/providers/patrol_provider.dart';
 import '../../../data/providers/repository_providers.dart';
 
+/// Native iOS Officer Patrol Units Screen
 class OfficerPatrolUnitsScreen extends ConsumerWidget {
   const OfficerPatrolUnitsScreen({super.key});
 
@@ -20,37 +24,58 @@ class OfficerPatrolUnitsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unitsAsync = ref.watch(patrolUnitsStreamProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
+    final separatorColor = isDark ? AppColors.separatorDark : AppColors.separatorLight;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Patrol Fleet Management', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
       body: SafeArea(
         child: unitsAsync.when(
           data: (units) {
             if (units.isEmpty) {
-              return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.directions_car_outlined, size: 56, color: AppColors.policeNavy),
-                    SizedBox(height: 16),
-                    Text(
-                      'No Patrol Units Registered',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      'No active patrol units in the district roster yet.',
-                      style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
-                    ),
-                  ],
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.surfaceDark : AppColors.secondarySurfaceLight,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: separatorColor),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            CupertinoIcons.car_detailed,
+                            size: 36,
+                            color: primaryTextColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        'No Patrol Units Registered',
+                        style: IosTypography.title2(color: primaryTextColor),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'No active patrol units in the district roster yet.',
+                        textAlign: TextAlign.center,
+                        style: IosTypography.body(color: secondaryTextColor),
+                      ),
+                    ],
+                  ),
                 ),
               );
             }
 
             return ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               itemCount: units.length,
               itemBuilder: (context, index) {
                 final unit = units[index];
@@ -63,56 +88,50 @@ class OfficerPatrolUnitsScreen extends ConsumerWidget {
                   ),
                 );
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Padding(
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: IosCard(
                     padding: const EdgeInsets.all(16),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(10),
+                              width: 42,
+                              height: 42,
                               decoration: BoxDecoration(
-                                color: unit.available
-                                    ? AppColors.safeGreenLight
-                                    : AppColors.dividerLight,
+                                color: isDark ? AppColors.secondarySurfaceDark : AppColors.secondarySurfaceLight,
                                 shape: BoxShape.circle,
+                                border: Border.all(color: separatorColor),
                               ),
-                              child: Icon(
-                                Icons.directions_car_filled_rounded,
-                                color: unit.available
-                                    ? AppColors.safeGreen
-                                    : AppColors.textHintLight,
+                              child: Center(
+                                child: Icon(
+                                  CupertinoIcons.car_fill,
+                                  color: primaryTextColor,
+                                  size: 22,
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 14),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     unit.name,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimaryLight,
-                                    ),
+                                    style: IosTypography.headline(color: primaryTextColor),
                                   ),
-                                  const SizedBox(height: 2),
                                   Text(
-                                    '${unit.officerName} • $dist from Sector HQ',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textSecondaryLight,
-                                    ),
+                                    '${unit.officerName} • $dist away',
+                                    style: IosTypography.footnote(color: secondaryTextColor),
                                   ),
                                 ],
                               ),
                             ),
-                            Switch(
+                            CupertinoSwitch(
                               value: unit.available,
-                              activeColor: AppColors.safeGreen,
+                              activeColor: primaryTextColor,
                               onChanged: (val) {
                                 ref
                                     .read(patrolRepositoryProvider)
@@ -121,23 +140,32 @@ class OfficerPatrolUnitsScreen extends ConsumerWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              unit.available ? 'AVAILABLE FOR DISPATCH' : 'BUSY / ON PATROL',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: unit.available ? AppColors.safeGreenDark : AppColors.textHintLight,
-                              ),
+                            IosBadge(
+                              label: unit.available ? 'AVAILABLE' : 'BUSY / ON PATROL',
+                              icon: unit.available
+                                  ? CupertinoIcons.checkmark_circle_fill
+                                  : CupertinoIcons.clock_fill,
+                              type: unit.available ? IosBadgeType.success : IosBadgeType.info,
                             ),
-                            const Spacer(),
-                            TextButton.icon(
-                              icon: const Icon(Icons.phone, size: 16),
-                              label: const Text('Call Unit'),
+                            CupertinoButton(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              minSize: 36,
                               onPressed: () => _callUnit(unit.phone),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(CupertinoIcons.phone_fill, size: 14, color: AppColors.accentBlue),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Call Unit',
+                                    style: IosTypography.subhead(color: AppColors.accentBlue),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -148,8 +176,12 @@ class OfficerPatrolUnitsScreen extends ConsumerWidget {
               },
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e')),
+          loading: () => Center(
+            child: CupertinoActivityIndicator(radius: 14, color: primaryTextColor),
+          ),
+          error: (err, _) => Center(
+            child: Text('Error: $err', style: IosTypography.subhead(color: secondaryTextColor)),
+          ),
         ),
       ),
     );

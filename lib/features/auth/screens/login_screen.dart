@@ -1,10 +1,14 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/l10n/app_localizations.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/ios_typography.dart';
+import '../../../core/widgets/ios_widgets.dart';
 import '../../../data/providers/auth_provider.dart';
 
+/// Native iOS Citizen Login Screen
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -27,21 +31,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _handleSendOtp() async {
     final phone = _phoneController.text.trim();
     if (phone.length < 10) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid 10-digit mobile number')),
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Invalid Mobile Number'),
+          content: const Text('Please enter a valid 10-digit mobile number.'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
       );
       return;
     }
 
     final success = await ref.read(authProvider.notifier).sendOtp(phone);
     if (success && mounted) {
-      setState(() {
-        _otpSent = true;
-      });
+      setState(() => _otpSent = true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('SMS OTP sent to +91 $phone'),
-          backgroundColor: AppColors.safeGreen,
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -50,8 +62,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _handleVerifyOtp() async {
     final otp = _otpController.text.trim();
     if (otp.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid 6-digit OTP')),
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Incomplete OTP'),
+          content: const Text('Please enter the 6-digit OTP received via SMS.'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
       );
       return;
     }
@@ -65,10 +87,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         context.go('/profile-setup');
       }
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid OTP. Please check and try again.'),
-          backgroundColor: AppColors.sosRed,
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Verification Failed'),
+          content: const Text('Invalid OTP. Please check the code and try again.'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
         ),
       );
     }
@@ -78,27 +107,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final authState = ref.watch(authProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 24),
+              const SizedBox(height: 36),
               Center(
                 child: Container(
-                  width: 90,
-                  height: 90,
+                  width: 80,
+                  height: 80,
                   decoration: BoxDecoration(
-                    color: AppColors.primaryPurpleSurface,
+                    color: isDark ? AppColors.surfaceDark : AppColors.secondarySurfaceLight,
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.phone_android_rounded,
-                    size: 48,
-                    color: AppColors.primaryPurple,
+                  child: Center(
+                    child: Icon(
+                      CupertinoIcons.device_phone_portrait,
+                      size: 40,
+                      color: primaryTextColor,
+                    ),
                   ),
                 ),
               ),
@@ -106,103 +144,122 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Text(
                 l10n.citizenLogin,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimaryLight,
-                ),
+                style: IosTypography.title1(color: primaryTextColor),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 l10n.loginPrompt,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondaryLight,
-                ),
+                style: IosTypography.subhead(color: secondaryTextColor),
               ),
               const SizedBox(height: 36),
 
-              // Mobile Number Input
-              TextField(
+              // Mobile Number Input Field
+              CupertinoTextField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
                 maxLength: 10,
-                decoration: InputDecoration(
-                  labelText: l10n.contactPhone,
-                  prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.primaryPurple),
-                  prefixText: '+91 ',
-                  counterText: '',
+                placeholder: '10-digit mobile number',
+                placeholderStyle: IosTypography.callout(color: AppColors.tertiaryTextDark),
+                style: IosTypography.callout(color: primaryTextColor),
+                prefix: Padding(
+                  padding: const EdgeInsets.only(left: 14),
+                  child: Text(
+                    '+91 ',
+                    style: IosTypography.headline(color: primaryTextColor),
+                  ),
+                ),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                  ),
                 ),
               ),
+
               const SizedBox(height: 16),
 
               if (!_otpSent) ...[
-                ElevatedButton(
-                  onPressed: authState.isLoading ? null : _handleSendOtp,
-                  child: authState.isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : Text(l10n.sendOtp),
+                IosButton(
+                  text: l10n.sendOtp,
+                  icon: CupertinoIcons.arrow_right_circle_fill,
+                  isLoading: authState.isLoading,
+                  onPressed: _handleSendOtp,
                 ),
               ] else ...[
-                // OTP Field
-                TextField(
+                CupertinoTextField(
                   controller: _otpController,
                   keyboardType: TextInputType.number,
                   maxLength: 6,
+                  placeholder: 'Enter 6-digit OTP',
+                  placeholderStyle: IosTypography.callout(color: AppColors.tertiaryTextDark),
+                  style: IosTypography.title2(color: primaryTextColor),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 8,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: l10n.enterOtp,
-                    counterText: '',
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: authState.isLoading ? null : _handleVerifyOtp,
-                  child: authState.isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : Text(l10n.verifyAndLogin),
+                IosButton(
+                  text: l10n.verifyAndLogin,
+                  icon: CupertinoIcons.checkmark_seal_fill,
+                  isLoading: authState.isLoading,
+                  onPressed: _handleVerifyOtp,
                 ),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _otpSent = false;
-                      _otpController.clear();
-                    });
-                  },
-                  child: const Text('Change Phone Number'),
+                const SizedBox(height: 12),
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  child: Text(
+                    'Change mobile number',
+                    style: IosTypography.subhead(color: AppColors.accentBlue),
+                  ),
+                  onPressed: () => setState(() => _otpSent = false),
                 ),
               ],
 
               const SizedBox(height: 48),
-              const Divider(color: AppColors.dividerLight),
-              const SizedBox(height: 20),
 
-              // Officer Login Button
-              OutlinedButton.icon(
-                icon: const Icon(Icons.local_police_rounded, color: AppColors.policeNavy),
-                label: Text(
-                  l10n.officerLoginLink,
-                  style: const TextStyle(color: AppColors.policeNavy),
+              // Officer Login Shortcut
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                  ),
                 ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.policeNavy, width: 1.5),
-                  backgroundColor: AppColors.policeNavySurface.withOpacity(0.4),
+                child: Column(
+                  children: [
+                    Text(
+                      'Police & Administrative Staff',
+                      style: IosTypography.footnote(color: secondaryTextColor),
+                    ),
+                    const SizedBox(height: 6),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(CupertinoIcons.shield_fill, size: 16, color: primaryTextColor),
+                          const SizedBox(width: 6),
+                          Text(
+                            l10n.officerLoginLink,
+                            style: IosTypography.headline(color: primaryTextColor),
+                          ),
+                        ],
+                      ),
+                      onPressed: () => context.go('/officer-login'),
+                    ),
+                  ],
                 ),
-                onPressed: () => context.go('/officer-login'),
               ),
             ],
           ),

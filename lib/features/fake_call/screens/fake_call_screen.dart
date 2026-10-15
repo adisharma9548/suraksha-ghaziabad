@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/ios_typography.dart';
+import '../../../core/widgets/ios_widgets.dart';
 
+/// Native iOS Fake Call Screen
+/// Discreet incoming call simulator designed to Apple HIG standards.
 class FakeCallScreen extends StatefulWidget {
   const FakeCallScreen({super.key});
 
@@ -60,154 +65,201 @@ class _FakeCallScreenState extends State<FakeCallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
+
     return Scaffold(
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
       appBar: AppBar(
-        title: const Text('Discreet Fake Call', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('Discreet Fake Call', style: IosTypography.headline(color: primaryTextColor)),
+        backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
+        elevation: 0,
+        centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.only(bottom: 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const SizedBox(height: 16),
               Center(
                 child: Container(
-                  width: 80,
-                  height: 80,
+                  width: 76,
+                  height: 76,
                   decoration: BoxDecoration(
-                    color: AppColors.safeGreenLight,
+                    color: isDark ? AppColors.surfaceDark : AppColors.secondarySurfaceLight,
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.phone_in_talk_rounded,
-                    size: 40,
-                    color: AppColors.safeGreen,
+                  child: Center(
+                    child: Icon(
+                      CupertinoIcons.phone_fill,
+                      size: 36,
+                      color: primaryTextColor,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Simulate an Incoming Call',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimaryLight,
-                ),
+                style: IosTypography.title2(color: primaryTextColor),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Schedule a realistic phone call to provide an excuse to step away from uncomfortable or suspicious surroundings.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight, height: 1.35),
-              ),
-              const SizedBox(height: 28),
-
-              // Caller Name
-              TextField(
-                controller: _callerController,
-                decoration: const InputDecoration(
-                  labelText: 'Caller Name',
-                  prefixIcon: Icon(Icons.person, color: AppColors.primaryPurple),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  'Trigger a realistic iOS incoming call to discreetly disengage from uncomfortable surroundings.',
+                  textAlign: TextAlign.center,
+                  style: IosTypography.subhead(color: secondaryTextColor),
                 ),
-              ),
-              const SizedBox(height: 10),
-
-              Wrap(
-                spacing: 8,
-                children: _quickCallers.map((name) {
-                  return ActionChip(
-                    label: Text(name),
-                    backgroundColor: Colors.white,
-                    onPressed: () => setState(() => _callerController.text = name),
-                  );
-                }).toList(),
               ),
               const SizedBox(height: 24),
 
-              // Trigger Delay
-              const Text(
-                'Call Delay',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [5, 15, 30, 60].map((sec) {
-                  final isSelected = sec == _delaySeconds;
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: isSelected
-                              ? AppColors.primaryPurpleSurface
-                              : Colors.white,
-                          side: BorderSide(
-                            color: isSelected
-                                ? AppColors.primaryPurple
-                                : AppColors.dividerLight,
+              // Grouped Section: Caller Info
+              IosGroupedSection(
+                header: 'CALLER DISPLAY IDENTITY',
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CupertinoTextField(
+                          controller: _callerController,
+                          placeholder: 'Caller Name',
+                          placeholderStyle: IosTypography.callout(color: AppColors.tertiaryTextDark),
+                          style: IosTypography.callout(color: primaryTextColor),
+                          prefix: Padding(
+                            padding: const EdgeInsets.only(left: 12),
+                            child: Icon(CupertinoIcons.person_fill, size: 18, color: primaryTextColor),
                           ),
-                          minimumSize: const Size(0, 44),
-                        ),
-                        onPressed: () => setState(() => _delaySeconds = sec),
-                        child: Text(
-                          '${sec}s',
-                          style: TextStyle(
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            color: isSelected
-                                ? AppColors.primaryPurple
-                                : AppColors.textPrimaryLight,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.secondarySurfaceDark : AppColors.secondaryBackgroundLight,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                            ),
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 12),
+                        Text('Suggested Contacts', style: IosTypography.footnote(color: secondaryTextColor)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _quickCallers.map((name) {
+                            final isCurrent = _callerController.text == name;
+                            return CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              minSize: 32,
+                              onPressed: () => setState(() => _callerController.text = name),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isCurrent
+                                      ? primaryTextColor
+                                      : (isDark ? AppColors.surfaceDark : AppColors.secondaryBackgroundLight),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isCurrent
+                                        ? primaryTextColor
+                                        : (isDark ? AppColors.separatorDark : AppColors.separatorLight),
+                                  ),
+                                ),
+                                child: Text(
+                                  name,
+                                  style: IosTypography.caption1(
+                                    color: isCurrent
+                                        ? (isDark ? Colors.black : Colors.white)
+                                        : primaryTextColor,
+                                    weight: isCurrent ? FontWeight.w600 : FontWeight.w400,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
                     ),
-                  );
-                }).toList(),
+                  ),
+                ],
               ),
-              const SizedBox(height: 36),
 
-              if (_isScheduled) ...[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.safeGreenLight,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.safeGreen),
+              // Grouped Section: Timing
+              IosGroupedSection(
+                header: 'TRIGGER DELAY',
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      children: [5, 15, 30, 60].map((sec) {
+                        final isSelected = sec == _delaySeconds;
+                        return Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 3),
+                            child: CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              minSize: 36,
+                              onPressed: () => setState(() => _delaySeconds = sec),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? primaryTextColor
+                                      : (isDark ? AppColors.surfaceDark : AppColors.secondaryBackgroundLight),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? primaryTextColor
+                                        : (isDark ? AppColors.separatorDark : AppColors.separatorLight),
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '${sec}s',
+                                  style: IosTypography.subhead(
+                                    color: isSelected
+                                        ? (isDark ? Colors.black : Colors.white)
+                                        : primaryTextColor,
+                                    weight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Call incoming in $_secondsRemaining seconds...',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.safeGreenDark,
-                        ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // Action button
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _isScheduled
+                    ? IosButton(
+                        text: 'Cancel Countdown (${_secondsRemaining}s)',
+                        icon: CupertinoIcons.clear_circled_solid,
+                        type: IosButtonType.secondary,
+                        onPressed: _cancelSchedule,
+                      )
+                    : IosButton(
+                        text: 'Schedule Fake Call (${_delaySeconds}s)',
+                        icon: CupertinoIcons.phone_fill,
+                        type: IosButtonType.primary,
+                        onPressed: _scheduleCall,
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Lock phone or keep app open. Fullscreen caller screen will trigger automatically.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton(
-                  onPressed: _cancelSchedule,
-                  child: const Text('Cancel Scheduled Call'),
-                ),
-              ] else ...[
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.safeGreen,
-                  ),
-                  icon: const Icon(Icons.ring_volume_rounded),
-                  label: Text('Trigger Call in ${_delaySeconds}s'),
-                  onPressed: _scheduleCall,
-                ),
-              ],
+              ),
             ],
           ),
         ),

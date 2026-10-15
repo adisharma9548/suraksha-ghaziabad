@@ -1,12 +1,16 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/l10n/app_localizations.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/ios_typography.dart';
+import '../../../core/widgets/ios_widgets.dart';
 import '../../../data/models/trusted_contact_model.dart';
 import '../../../data/providers/auth_provider.dart';
 
+/// Native iOS Citizen Profile Setup Screen
 class ProfileSetupScreen extends ConsumerStatefulWidget {
   const ProfileSetupScreen({super.key});
 
@@ -23,11 +27,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _uuid = const Uuid();
 
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   void dispose() {
     _nameController.dispose();
     _pinController.dispose();
@@ -38,8 +37,18 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   void _showAddContactDialog() {
     if (_contacts.length >= 5) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Maximum 5 emergency contacts allowed')),
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Limit Reached'),
+          content: const Text('A maximum of 5 emergency contacts can be registered.'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
       );
       return;
     }
@@ -47,49 +56,83 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     String relationship = 'Family';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
 
-    showDialog(
+    showCupertinoDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Add Trusted Contact'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: 'Contact Name'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneCtrl,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Phone Number (+91)'),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: relationship,
-                items: ['Mother', 'Father', 'Sister', 'Brother', 'Friend', 'Guardian', 'Family']
-                    .map((r) => DropdownMenuItem(value: r, child: Text(r)))
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    setDialogState(() => relationship = val);
-                  }
-                },
-                decoration: const InputDecoration(labelText: 'Relationship'),
-              ),
-            ],
+        builder: (context, setDialogState) => CupertinoAlertDialog(
+          title: Text('Add Trusted Contact', style: IosTypography.headline()),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 12.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CupertinoTextField(
+                  controller: nameCtrl,
+                  placeholder: 'Contact Full Name',
+                  style: IosTypography.callout(color: primaryTextColor),
+                  padding: const EdgeInsets.all(10),
+                ),
+                const SizedBox(height: 10),
+                CupertinoTextField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  placeholder: '10-Digit Mobile (+91)',
+                  style: IosTypography.callout(color: primaryTextColor),
+                  padding: const EdgeInsets.all(10),
+                ),
+                const SizedBox(height: 10),
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surfaceDark : AppColors.secondarySurfaceLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Relationship: $relationship', style: IosTypography.footnote(color: primaryTextColor)),
+                        Icon(CupertinoIcons.chevron_up_chevron_down, size: 14, color: primaryTextColor),
+                      ],
+                    ),
+                  ),
+                  onPressed: () {
+                    showCupertinoModalPopup(
+                      context: context,
+                      builder: (pickerCtx) => Container(
+                        height: 220,
+                        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                        child: CupertinoPicker(
+                          itemExtent: 36,
+                          onSelectedItemChanged: (index) {
+                            final rels = ['Mother', 'Father', 'Sister', 'Brother', 'Friend', 'Guardian', 'Family'];
+                            setDialogState(() => relationship = rels[index]);
+                          },
+                          children: ['Mother', 'Father', 'Sister', 'Brother', 'Friend', 'Guardian', 'Family']
+                              .map((r) => Center(child: Text(r, style: IosTypography.callout())))
+                              .toList(),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
+            CupertinoDialogAction(
               child: const Text('Cancel'),
+              onPressed: () => Navigator.pop(ctx),
             ),
-            ElevatedButton(
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              child: const Text('Add'),
               onPressed: () {
-                if (nameCtrl.text.trim().isNotEmpty &&
-                    phoneCtrl.text.trim().isNotEmpty) {
+                if (nameCtrl.text.trim().isNotEmpty && phoneCtrl.text.trim().isNotEmpty) {
                   setState(() {
                     _contacts.add(TrustedContactModel(
                       id: _uuid.v4(),
@@ -102,7 +145,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                   Navigator.pop(ctx);
                 }
               },
-              child: const Text('Add'),
             ),
           ],
         ),
@@ -116,37 +158,87 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     final confirmPin = _confirmPinController.text.trim();
 
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your full name')),
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Name Required'),
+          content: const Text('Please enter your full name.'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
       );
       return;
     }
 
     if (pin.length != 4 || pin != confirmPin) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter and confirm a 4-digit PIN')),
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('PIN Error'),
+          content: const Text('Please enter and confirm a 4-digit emergency cancellation PIN.'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
       );
       return;
     }
 
     if (_contacts.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add at least 1 emergency contact')),
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Contacts Required'),
+          content: const Text('Please add at least 1 emergency contact to receive distress alerts.'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
       );
       return;
     }
 
     final duressPin = _duressPinController.text.trim();
     if (duressPin.isNotEmpty && duressPin.length != 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Duress PIN must be exactly 4 digits if set')),
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Duress PIN Error'),
+          content: const Text('Decoy duress PIN must be exactly 4 digits.'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
       );
       return;
     }
 
     if (duressPin.isNotEmpty && duressPin == pin) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Duress PIN must be different from your emergency PIN')),
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Duress PIN Error'),
+          content: const Text('Duress PIN must differ from your normal emergency PIN.'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
       );
       return;
     }
@@ -154,8 +246,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     await ref.read(authProvider.notifier).saveProfile(
           name: name,
           pin: pin,
-          duressPin: duressPin.isNotEmpty ? duressPin : null,
           contacts: _contacts,
+          duressPin: duressPin.isNotEmpty ? duressPin : null,
         );
 
     if (mounted) {
@@ -166,243 +258,176 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final authState = ref.watch(authProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
       appBar: AppBar(
-        title: Text(l10n.completeProfile),
+        title: Text(l10n.completeProfile, style: IosTypography.headline(color: primaryTextColor)),
+        backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
+        elevation: 0,
+        centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.only(bottom: 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                l10n.completeProfile,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimaryLight,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Personalize your safety profile and setup trusted emergency circles.',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondaryLight),
-              ),
-              const SizedBox(height: 24),
-
-              // Name
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: l10n.yourName,
-                  prefixIcon: const Icon(Icons.person_rounded, color: AppColors.primaryPurple),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Emergency PIN section
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryPurpleSurface,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.pin_rounded, color: AppColors.primaryPurple),
-                        const SizedBox(width: 8),
-                        Text(
-                          l10n.emergencyPin,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryPurpleDark,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      l10n.emergencyPinDesc,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondaryLight,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _pinController,
-                            keyboardType: TextInputType.number,
-                            maxLength: 4,
-                            obscureText: true,
-                            decoration: const InputDecoration(
-                              labelText: '4-Digit PIN',
-                              counterText: '',
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: _confirmPinController,
-                            keyboardType: TextInputType.number,
-                            maxLength: 4,
-                            obscureText: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Confirm PIN',
-                              counterText: '',
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Decoy Duress PIN (Optional)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.sosRedLight.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.sosRed.withOpacity(0.2)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.shield_outlined,
-                            color: AppColors.sosRed, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'Decoy Duress PIN (Optional)',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.sosRedDark,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'If forced by an attacker to cancel an active SOS, entering this PIN visually closes the alert while secretly continuing live location streaming to the police control room.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondaryLight,
-                        height: 1.35,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _duressPinController,
-                      keyboardType: TextInputType.number,
-                      maxLength: 4,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: '4-Digit Duress PIN (optional)',
-                        counterText: '',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Trusted Contacts Section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // Inset Section 1: User Identity
+              IosGroupedSection(
+                header: 'IDENTITY',
                 children: [
-                  Text(
-                    l10n.trustedContacts,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimaryLight,
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: CupertinoTextField(
+                      controller: _nameController,
+                      placeholder: 'Your Full Name',
+                      placeholderStyle: IosTypography.callout(color: AppColors.tertiaryTextDark),
+                      style: IosTypography.callout(color: primaryTextColor),
+                      prefix: Padding(
+                        padding: const EdgeInsets.only(left: 12),
+                        child: Icon(CupertinoIcons.person_fill, size: 18, color: primaryTextColor),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.secondarySurfaceDark : AppColors.secondaryBackgroundLight,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                        ),
+                      ),
                     ),
-                  ),
-                  TextButton.icon(
-                    icon: const Icon(Icons.add, size: 18),
-                    label: Text(l10n.addContact),
-                    onPressed: _showAddContactDialog,
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
 
-              if (_contacts.isEmpty)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.dividerLight),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.contact_phone_outlined, color: AppColors.textSecondaryLight),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'No emergency contacts added yet. Add 1 to 5 contacts (parents, family, trusted friends) to notify during an SOS.',
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+              // Inset Section 2: Security PINs
+              IosGroupedSection(
+                header: 'EMERGENCY & DURESS PINS',
+                footer: 'Emergency PIN cancels false alarms. Duress PIN secretly alerts police when coerced by an attacker.',
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        CupertinoTextField(
+                          controller: _pinController,
+                          keyboardType: TextInputType.number,
+                          maxLength: 4,
+                          obscureText: true,
+                          placeholder: '4-Digit Emergency PIN',
+                          placeholderStyle: IosTypography.callout(color: AppColors.tertiaryTextDark),
+                          style: IosTypography.callout(color: primaryTextColor),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.secondarySurfaceDark : AppColors.secondaryBackgroundLight,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              ..._contacts.asMap().entries.map((entry) {
-                final idx = entry.key;
-                final contact = entry.value;
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: AppColors.primaryPurpleSurface,
-                      child: Text(
-                        contact.name[0],
-                        style: const TextStyle(
-                          color: AppColors.primaryPurple,
-                          fontWeight: FontWeight.bold,
+                        const SizedBox(height: 10),
+                        CupertinoTextField(
+                          controller: _confirmPinController,
+                          keyboardType: TextInputType.number,
+                          maxLength: 4,
+                          obscureText: true,
+                          placeholder: 'Confirm Emergency PIN',
+                          placeholderStyle: IosTypography.callout(color: AppColors.tertiaryTextDark),
+                          style: IosTypography.callout(color: primaryTextColor),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.secondarySurfaceDark : AppColors.secondaryBackgroundLight,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    title: Text(
-                      contact.name,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text('${contact.relationship} • ${contact.phone}'),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, color: AppColors.sosRed),
-                      onPressed: () {
-                        setState(() {
-                          _contacts.removeAt(idx);
-                        });
-                      },
+                        const SizedBox(height: 10),
+                        CupertinoTextField(
+                          controller: _duressPinController,
+                          keyboardType: TextInputType.number,
+                          maxLength: 4,
+                          obscureText: true,
+                          placeholder: 'Decoy Duress PIN (Optional)',
+                          placeholderStyle: IosTypography.callout(color: AppColors.tertiaryTextDark),
+                          style: IosTypography.callout(color: primaryTextColor),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.secondarySurfaceDark : AppColors.secondaryBackgroundLight,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                );
-              }),
-
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _handleSave,
-                child: Text(l10n.save),
+                ],
               ),
-              const SizedBox(height: 20),
+
+              // Inset Section 3: Trusted Contacts
+              IosGroupedSection(
+                header: 'TRUSTED CONTACTS (${_contacts.length}/5)',
+                footer: 'Contacts receive emergency dispatch links when SOS is initiated.',
+                children: [
+                  if (_contacts.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'No contacts added yet. Add at least 1 contact below.',
+                        style: IosTypography.footnote(color: secondaryTextColor),
+                      ),
+                    )
+                  else
+                    ..._contacts.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final c = entry.value;
+                      final isLast = index == _contacts.length - 1;
+                      return IosListTile(
+                        showDivider: !isLast,
+                        leadingIcon: CupertinoIcons.person_crop_circle_fill,
+                        title: c.name,
+                        subtitle: '${c.relationship} • ${c.phone}',
+                        trailing: CupertinoButton(
+                          padding: EdgeInsets.zero,
+                          minSize: 34,
+                          child: Icon(CupertinoIcons.minus_circle_fill, size: 20, color: primaryTextColor),
+                          onPressed: () => setState(() => _contacts.removeAt(index)),
+                        ),
+                      );
+                    }),
+                ],
+              ),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: IosButton(
+                  text: 'Add Emergency Contact',
+                  icon: CupertinoIcons.plus_circle_fill,
+                  type: IosButtonType.secondary,
+                  onPressed: _contacts.length >= 5 ? null : _showAddContactDialog,
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: IosButton(
+                  text: 'Save & Enter Protected Mode',
+                  icon: CupertinoIcons.shield_fill,
+                  isLoading: authState.isLoading,
+                  onPressed: _handleSave,
+                ),
+              ),
             ],
           ),
         ),

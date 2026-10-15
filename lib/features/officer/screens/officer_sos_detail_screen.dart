@@ -1,14 +1,18 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/ios_typography.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/widgets/ios_widgets.dart';
 import '../../../data/models/sos_alert_model.dart';
 import '../../../data/providers/repository_providers.dart';
 import '../widgets/patrol_assign_dialog.dart';
 
+/// Native iOS Officer SOS Detail Screen
 class OfficerSosDetailScreen extends ConsumerStatefulWidget {
   final String alertId;
 
@@ -35,7 +39,7 @@ class _OfficerSosDetailScreenState extends ConsumerState<OfficerSosDetailScreen>
     final lat = latestPoint?.lat ?? 28.6692;
     final lng = latestPoint?.lng ?? 77.4538;
 
-    showDialog(
+    showCupertinoDialog(
       context: context,
       builder: (ctx) => PatrolAssignDialog(
         citizenLat: lat,
@@ -51,7 +55,7 @@ class _OfficerSosDetailScreenState extends ConsumerState<OfficerSosDetailScreen>
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('${unit.name} dispatched to citizen location!'),
-                backgroundColor: AppColors.safeGreen,
+                duration: const Duration(seconds: 2),
               ),
             );
           }
@@ -69,7 +73,7 @@ class _OfficerSosDetailScreenState extends ConsumerState<OfficerSosDetailScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Incident marked as Resolved and logged.'),
-          backgroundColor: AppColors.safeGreen,
+          duration: Duration(seconds: 2),
         ),
       );
     }
@@ -78,6 +82,10 @@ class _OfficerSosDetailScreenState extends ConsumerState<OfficerSosDetailScreen>
   @override
   Widget build(BuildContext context) {
     final sosRepo = ref.watch(sosRepositoryProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
+    final separatorColor = isDark ? AppColors.separatorDark : AppColors.separatorLight;
 
     return StreamBuilder<SosAlertModel?>(
       stream: sosRepo.getSosAlertStream(widget.alertId),
@@ -86,8 +94,15 @@ class _OfficerSosDetailScreenState extends ConsumerState<OfficerSosDetailScreen>
 
         if (alert == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text('SOS Detail')),
-            body: const Center(child: CircularProgressIndicator()),
+            backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
+            appBar: AppBar(
+              title: Text('SOS Detail', style: IosTypography.headline(color: primaryTextColor)),
+              backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
+              elevation: 0,
+            ),
+            body: Center(
+              child: CupertinoActivityIndicator(radius: 14, color: primaryTextColor),
+            ),
           );
         }
 
@@ -97,18 +112,23 @@ class _OfficerSosDetailScreenState extends ConsumerState<OfficerSosDetailScreen>
         final isResolved = alert.status == 'resolved';
 
         return Scaffold(
+          backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
           appBar: AppBar(
-            title: Text('Incident: ${alert.userName}'),
+            title: Text(alert.userName, style: IosTypography.headline(color: primaryTextColor)),
+            backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
+            elevation: 0,
+            centerTitle: true,
             actions: [
-              IconButton(
-                icon: const Icon(Icons.phone),
+              CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Icon(CupertinoIcons.phone_fill, color: primaryTextColor),
                 onPressed: () => _callCitizen(alert.userPhone),
               ),
             ],
           ),
           body: Column(
             children: [
-              // Map displaying live moving location
+              // Moving Breadcrumb Map
               Expanded(
                 flex: 4,
                 child: FlutterMap(
@@ -119,20 +139,16 @@ class _OfficerSosDetailScreenState extends ConsumerState<OfficerSosDetailScreen>
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.suraksha.ghaziabad',
                     ),
-                    // Breadcrumb Trail Polyline
                     if (alert.locations.length > 1)
                       PolylineLayer(
                         polylines: [
                           Polyline(
-                            points: alert.locations
-                                .map((p) => LatLng(p.lat, p.lng))
-                                .toList(),
-                            color: AppColors.sosRed,
-                            strokeWidth: 4.0,
+                            points: alert.locations.map((p) => LatLng(p.lat, p.lng)).toList(),
+                            color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                            strokeWidth: 4.5,
                           ),
                         ],
                       ),
@@ -140,25 +156,24 @@ class _OfficerSosDetailScreenState extends ConsumerState<OfficerSosDetailScreen>
                       markers: [
                         Marker(
                           point: LatLng(lat, lng),
-                          width: 50,
-                          height: 50,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.sosRed.withOpacity(0.2),
-                            ),
-                            child: Center(
-                              child: Container(
-                                width: 26,
-                                height: 26,
-                                decoration: BoxDecoration(
-                                  color: AppColors.sosRed,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 3),
-                                  boxShadow: const [
-                                    BoxShadow(color: Colors.black26, blurRadius: 6),
-                                  ],
-                                ),
+                          width: 48,
+                          height: 48,
+                          child: Center(
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 3),
+                                boxShadow: const [
+                                  BoxShadow(color: Colors.black26, blurRadius: 6),
+                                ],
+                              ),
+                              child: Icon(
+                                CupertinoIcons.exclamationmark,
+                                size: 18,
+                                color: isDark ? Colors.black : Colors.white,
                               ),
                             ),
                           ),
@@ -169,82 +184,34 @@ class _OfficerSosDetailScreenState extends ConsumerState<OfficerSosDetailScreen>
                 ),
               ),
 
-              // Detail Drawer & Actions
+              // Detail Inset Section & Action Panel
               Expanded(
                 flex: 5,
                 child: ListView(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              alert.userName,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimaryLight,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Phone: ${alert.userPhone}',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textSecondaryLight,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isResolved
-                                ? AppColors.safeGreenLight
-                                : AppColors.sosRedLight,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isResolved ? AppColors.safeGreen : AppColors.sosRed,
-                            ),
-                          ),
-                          child: Text(
-                            alert.status.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: isResolved
-                                  ? AppColors.safeGreenDark
-                                  : AppColors.sosRedDark,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                     if (alert.isDuress) ...[
-                      const SizedBox(height: 12),
                       Container(
+                        margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppColors.sosRed,
-                          borderRadius: BorderRadius.circular(12),
+                          color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
-                            Icon(Icons.warning_rounded,
-                                color: Colors.white, size: 24),
-                            SizedBox(width: 10),
+                            Icon(
+                              CupertinoIcons.exclamationmark_triangle_fill,
+                              color: isDark ? Colors.black : Colors.white,
+                              size: 22,
+                            ),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                '⚠️ CRITICAL DURESS DETECTED: Citizen entered Decoy Duress PIN under coercion. DO NOT STAND DOWN. Urgent patrol dispatch required!',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  height: 1.3,
+                                'CRITICAL DURESS DETECTED: Citizen entered Decoy Duress PIN under coercion. DO NOT STAND DOWN. Urgent patrol dispatch required!',
+                                style: IosTypography.footnote(
+                                  color: isDark ? Colors.black : Colors.white,
+                                  weight: FontWeight.w700,
                                 ),
                               ),
                             ),
@@ -252,61 +219,86 @@ class _OfficerSosDetailScreenState extends ConsumerState<OfficerSosDetailScreen>
                         ),
                       ),
                     ],
-                    const SizedBox(height: 14),
 
-                    // Location address & timestamp
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on, color: AppColors.primaryPurple, size: 18),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            alert.lastLocationAddress ?? 'Ghaziabad GPS Tracked Area',
-                            style: const TextStyle(fontSize: 13),
+                    IosCard(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    alert.userName,
+                                    style: IosTypography.title2(color: primaryTextColor),
+                                  ),
+                                  Text(
+                                    'Phone: ${alert.userPhone}',
+                                    style: IosTypography.subhead(color: secondaryTextColor),
+                                  ),
+                                ],
+                              ),
+                              IosBadge(
+                                label: alert.status.toUpperCase(),
+                                icon: isResolved
+                                    ? CupertinoIcons.checkmark_seal_fill
+                                    : CupertinoIcons.antenna_radiowaves_left_right,
+                                type: isResolved ? IosBadgeType.success : IosBadgeType.error,
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Icon(CupertinoIcons.location_solid, size: 16, color: primaryTextColor),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  alert.lastLocationAddress ?? 'Ghaziabad GPS Tracked Area',
+                                  style: IosTypography.footnote(color: primaryTextColor),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(CupertinoIcons.clock, size: 14, color: secondaryTextColor),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Started: ${DateFormatter.formatDateTime(alert.startedAt)}',
+                                style: IosTypography.caption1(color: secondaryTextColor),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.access_time, color: AppColors.textHintLight, size: 16),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Triggered at: ${DateFormatter.formatDateTime(alert.startedAt)}',
-                          style: const TextStyle(fontSize: 12, color: AppColors.textHintLight),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
 
-                    // Dispatched Unit Card
+                    const SizedBox(height: 10),
+
+                    // Dispatched Patrol Card
                     if (alert.assignedUnitName != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.policeNavySurface,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.policeNavy.withOpacity(0.3)),
-                        ),
+                      IosCard(
+                        padding: const EdgeInsets.all(14),
                         child: Row(
                           children: [
-                            const Icon(Icons.local_police, color: AppColors.policeNavy),
-                            const SizedBox(width: 10),
+                            Icon(CupertinoIcons.car_fill, size: 24, color: primaryTextColor),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Dispatched: ${alert.assignedUnitName}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.policeNavy,
-                                    ),
+                                    'Dispatched Unit: ${alert.assignedUnitName}',
+                                    style: IosTypography.headline(color: primaryTextColor),
                                   ),
                                   Text(
                                     'Officer Contact: ${alert.assignedOfficerPhone ?? '112'}',
-                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                                    style: IosTypography.footnote(color: secondaryTextColor),
                                   ),
                                 ],
                               ),
@@ -314,80 +306,66 @@ class _OfficerSosDetailScreenState extends ConsumerState<OfficerSosDetailScreen>
                           ],
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 10),
                     ],
 
-                    // Simulated Audio Evidence Player
-                    Container(
+                    // Simulated Audio Evidence Box
+                    IosCard(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.dividerLight),
-                      ),
                       child: Row(
                         children: [
-                          IconButton(
-                            icon: Icon(
-                              _isPlayingAudio
-                                  ? Icons.pause_circle_filled_rounded
-                                  : Icons.play_circle_fill_rounded,
-                              size: 36,
-                              color: AppColors.primaryPurple,
+                          CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            onPressed: () => setState(() => _isPlayingAudio = !_isPlayingAudio),
+                            child: Icon(
+                              _isPlayingAudio ? CupertinoIcons.pause_circle_fill : CupertinoIcons.play_circle_fill,
+                              size: 40,
+                              color: primaryTextColor,
                             ),
-                            onPressed: () {
-                              setState(() => _isPlayingAudio = !_isPlayingAudio);
-                            },
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Ambient Audio Evidence',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                ),
+                                Text('Ambient Audio Evidence', style: IosTypography.headline(color: primaryTextColor)),
                                 Text(
-                                  _isPlayingAudio ? 'Playing simulated clip (0:14)...' : 'Encrypted background audio stream (0:45)',
-                                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
+                                  _isPlayingAudio ? 'Streaming audio evidence...' : 'Encrypted background recording',
+                                  style: IosTypography.caption1(color: secondaryTextColor),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(Icons.graphic_eq_rounded, color: AppColors.primaryPurple),
+                          Icon(CupertinoIcons.waveform, color: separatorColor),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
 
-                    // Primary Action Buttons
+                    const SizedBox(height: 18),
+
+                    // Action Controls
                     Row(
                       children: [
                         Expanded(
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.policeNavy,
-                            ),
-                            icon: const Icon(Icons.near_me_rounded),
-                            label: const Text('Assign Unit'),
+                          child: IosButton(
+                            text: 'Assign Patrol',
+                            icon: CupertinoIcons.paperplane_fill,
+                            type: IosButtonType.primary,
                             onPressed: isResolved ? null : () => _showAssignDialog(alert),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.safeGreen,
-                              side: const BorderSide(color: AppColors.safeGreen, width: 1.5),
-                            ),
-                            icon: const Icon(Icons.check_circle_outline),
-                            label: const Text('Mark Resolved'),
+                          child: IosButton(
+                            text: 'Mark Resolved',
+                            icon: CupertinoIcons.checkmark_circle_fill,
+                            type: IosButtonType.secondary,
                             onPressed: isResolved ? null : () => _markResolved(alert),
                           ),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),

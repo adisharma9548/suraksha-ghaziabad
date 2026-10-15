@@ -1,8 +1,11 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/ios_typography.dart';
 import '../../../data/providers/repository_providers.dart';
 
+/// Native iOS Change Duress PIN Dialog
 class ChangeDuressPinDialog extends ConsumerStatefulWidget {
   const ChangeDuressPinDialog({super.key});
 
@@ -30,24 +33,21 @@ class _ChangeDuressPinDialogState extends ConsumerState<ChangeDuressPinDialog> {
     final newDuressPin = _newDuressPinController.text.trim();
     final confirmDuressPin = _confirmDuressPinController.text.trim();
 
-    // Verify identity with emergency PIN
     final isValidEmergency = await ref
         .read(authRepositoryProvider)
         .verifyEmergencyPin(emergencyPin);
     if (!isValidEmergency) {
-      setState(() => _error = 'Your emergency PIN is incorrect');
+      setState(() => _error = 'Current emergency PIN is incorrect');
       return;
     }
 
     if (newDuressPin.length != 4 || newDuressPin != confirmDuressPin) {
-      setState(
-          () => _error = 'Duress PIN must be 4 digits and match confirmation');
+      setState(() => _error = 'Duress PIN must be 4 digits and match confirmation');
       return;
     }
 
     if (newDuressPin == emergencyPin) {
-      setState(() =>
-          _error = 'Duress PIN must be different from your emergency PIN');
+      setState(() => _error = 'Duress PIN must differ from emergency PIN');
       return;
     }
 
@@ -60,73 +60,79 @@ class _ChangeDuressPinDialogState extends ConsumerState<ChangeDuressPinDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Row(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
+
+    return CupertinoAlertDialog(
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.shield_outlined, color: AppColors.sosRed),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Set Decoy Duress PIN',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
-            ),
-          ),
+          const Icon(CupertinoIcons.exclamationmark_shield_fill, size: 20),
+          const SizedBox(width: 8),
+          Text('Set Decoy Duress PIN', style: IosTypography.headline()),
         ],
       ),
-      content: SingleChildScrollView(
+      content: Padding(
+        padding: const EdgeInsets.only(top: 10.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'A decoy PIN used when coerced by an attacker. Entering it appears to cancel the alarm, but secretly alerts police control room and keeps live GPS tracking on.',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, height: 1.35),
+            Text(
+              'A covert PIN entered if coerced by an attacker. It silently alerts the control room while appearing to cancel the alarm.',
+              style: IosTypography.caption1(color: secondaryTextColor),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
-            TextField(
+            const SizedBox(height: 12),
+            CupertinoTextField(
               controller: _emergencyPinController,
               keyboardType: TextInputType.number,
               maxLength: 4,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Verify Current Emergency PIN',
-                counterText: '',
-              ),
+              placeholder: 'Current Emergency PIN',
+              style: IosTypography.callout(color: primaryTextColor),
+              padding: const EdgeInsets.all(10),
             ),
-            const SizedBox(height: 12),
-            TextField(
+            const SizedBox(height: 8),
+            CupertinoTextField(
               controller: _newDuressPinController,
               keyboardType: TextInputType.number,
               maxLength: 4,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'New 4-Digit Duress PIN',
-                counterText: '',
-              ),
+              placeholder: 'New 4-Digit Duress PIN',
+              style: IosTypography.callout(color: primaryTextColor),
+              padding: const EdgeInsets.all(10),
             ),
-            const SizedBox(height: 12),
-            TextField(
+            const SizedBox(height: 8),
+            CupertinoTextField(
               controller: _confirmDuressPinController,
               keyboardType: TextInputType.number,
               maxLength: 4,
               obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'Confirm Duress PIN',
-                counterText: '',
-                errorText: _error,
-              ),
+              placeholder: 'Confirm Duress PIN',
+              style: IosTypography.callout(color: primaryTextColor),
+              padding: const EdgeInsets.all(10),
             ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _error!,
+                style: IosTypography.caption1(
+                  color: isDark ? AppColors.primaryTextDark : const Color(0xFF1C1C1E),
+                  weight: FontWeight.w700,
+                ),
+              ),
+            ],
           ],
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
+        CupertinoDialogAction(
           child: const Text('Cancel'),
+          onPressed: () => Navigator.pop(context),
         ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.sosRed),
+        CupertinoDialogAction(
+          isDefaultAction: true,
           onPressed: _handleSave,
           child: const Text('Save Duress PIN'),
         ),

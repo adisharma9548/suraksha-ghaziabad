@@ -1,7 +1,11 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/ios_typography.dart';
 import '../../../data/providers/repository_providers.dart';
 
+/// Native iOS Change Emergency PIN Dialog
 class ChangePinDialog extends ConsumerStatefulWidget {
   const ChangePinDialog({super.key});
 
@@ -36,7 +40,7 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
     }
 
     if (newPin.length != 4 || newPin != confirmPin) {
-      setState(() => _error = 'New PIN must be 4 digits and match confirmation');
+      setState(() => _error = 'New PIN must be 4 digits and match');
       return;
     }
 
@@ -49,47 +53,65 @@ class _ChangePinDialogState extends ConsumerState<ChangePinDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Change Emergency PIN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _oldPinController,
-            keyboardType: TextInputType.number,
-            maxLength: 4,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'Current PIN', counterText: ''),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _newPinController,
-            keyboardType: TextInputType.number,
-            maxLength: 4,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'New 4-Digit PIN', counterText: ''),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _confirmPinController,
-            keyboardType: TextInputType.number,
-            maxLength: 4,
-            obscureText: true,
-            decoration: InputDecoration(
-              labelText: 'Confirm New PIN',
-              counterText: '',
-              errorText: _error,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+
+    return CupertinoAlertDialog(
+      title: Text('Change Emergency PIN', style: IosTypography.headline()),
+      content: Padding(
+        padding: const EdgeInsets.only(top: 12.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CupertinoTextField(
+              controller: _oldPinController,
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              obscureText: true,
+              placeholder: 'Current 4-Digit PIN',
+              style: IosTypography.callout(color: primaryTextColor),
+              padding: const EdgeInsets.all(10),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            CupertinoTextField(
+              controller: _newPinController,
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              obscureText: true,
+              placeholder: 'New 4-Digit PIN',
+              style: IosTypography.callout(color: primaryTextColor),
+              padding: const EdgeInsets.all(10),
+            ),
+            const SizedBox(height: 8),
+            CupertinoTextField(
+              controller: _confirmPinController,
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              obscureText: true,
+              placeholder: 'Confirm New PIN',
+              style: IosTypography.callout(color: primaryTextColor),
+              padding: const EdgeInsets.all(10),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _error!,
+                style: IosTypography.caption1(
+                  color: isDark ? AppColors.primaryTextDark : const Color(0xFF1C1C1E),
+                  weight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
+        CupertinoDialogAction(
           child: const Text('Cancel'),
+          onPressed: () => Navigator.pop(context),
         ),
-        ElevatedButton(
+        CupertinoDialogAction(
+          isDefaultAction: true,
           onPressed: _handleSave,
           child: const Text('Update PIN'),
         ),

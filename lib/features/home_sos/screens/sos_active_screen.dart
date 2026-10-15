@@ -1,7 +1,9 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/ios_typography.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../data/providers/sos_provider.dart';
@@ -32,6 +34,7 @@ class SosActiveScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final sosState = ref.watch(sosProvider);
     final alert = sosState.activeAlert;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final status = alert?.status ?? 'triggered';
     final isResolved = status == 'resolved';
@@ -39,9 +42,13 @@ class SosActiveScreen extends ConsumerWidget {
     final isPoliceNotified = status == 'police_notified' || isAssigned || isResolved;
     final isAlertSent = true;
 
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
+    final cardBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final separatorColor = isDark ? AppColors.separatorDark : AppColors.separatorLight;
+
     return WillPopScope(
       onWillPop: () async {
-        // Prevent accidental back press during active SOS
         if (alert != null && alert.isActive) {
           _showCancelDialog(context, ref);
           return false;
@@ -49,242 +56,207 @@ class SosActiveScreen extends ConsumerWidget {
         return true;
       },
       child: Scaffold(
-        backgroundColor: AppColors.backgroundLight,
+        backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
         appBar: AppBar(
           automaticallyImplyLeading: false,
           title: Text(
             isResolved ? 'SOS Incident Resolved' : l10n.sosActiveStatus,
-            style: TextStyle(
-              color: isResolved ? AppColors.safeGreen : AppColors.sosRed,
-              fontWeight: FontWeight.bold,
-            ),
+            style: IosTypography.headline(color: primaryTextColor),
           ),
           actions: [
             if (alert != null && alert.isActive)
-              IconButton(
-                icon: const Icon(Icons.close_rounded, color: AppColors.sosRed),
-                tooltip: 'Cancel SOS with PIN',
+              CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 onPressed: () => _showCancelDialog(context, ref),
+                child: Text(
+                  'Cancel',
+                  style: IosTypography.body(
+                    color: primaryTextColor,
+                    weight: FontWeight.w600,
+                  ),
+                ),
               ),
           ],
         ),
         body: SafeArea(
-          child: Column(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             children: [
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  children: [
-                    // Emergency Status Card
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: isResolved
-                              ? [AppColors.safeGreenLight, Colors.white]
-                              : [AppColors.sosRedLight, Colors.white],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: isResolved ? AppColors.safeGreen : AppColors.sosRed,
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: (isResolved ? AppColors.safeGreen : AppColors.sosRed)
-                                .withOpacity(0.12),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            isResolved
-                                ? Icons.check_circle_rounded
-                                : Icons.warning_rounded,
-                            size: 64,
-                            color: isResolved ? AppColors.safeGreen : AppColors.sosRed,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            isResolved
-                                ? 'SITUATION RESOLVED'
-                                : 'POLICE DISPATCH INITIATED',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                              color: isResolved
-                                  ? AppColors.safeGreenDark
-                                  : AppColors.sosRedDark,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            isResolved
-                                ? 'Patrol unit confirmed on-scene resolution. Location streaming and evidence recording stopped.'
-                                : 'Emergency SOS active. Opening direct Dial 112 call and notifying trusted emergency contacts & district officers.',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondaryLight,
-                              height: 1.35,
-                            ),
-                          ),
-
-                          // 5-Second Cancel Countdown
-                          if (!isResolved && sosState.cancelCountdown > 0) ...[
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: AppColors.sosRed,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                '${l10n.cancelCountdown} ${sosState.cancelCountdown}s',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+              // Emergency Status Inset Card
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: separatorColor,
+                    width: isResolved ? 1.0 : 2.0,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
-                    const SizedBox(height: 20),
-
-                    // Active Indicators: Location & Recording
+                  ],
+                ),
+                child: Column(
+                  children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Expanded(
-                          child: _LiveIndicator(
-                            icon: Icons.my_location_rounded,
-                            label: isResolved
-                                ? 'GPS Sharing Idle'
-                                : l10n.locationSharingLive,
-                            isActive: !isResolved,
-                            activeColor: AppColors.sosRed,
-                          ),
+                        Icon(
+                          isResolved
+                              ? CupertinoIcons.checkmark_seal_fill
+                              : CupertinoIcons.exclamationmark_triangle_fill,
+                          size: 24,
+                          color: primaryTextColor,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _LiveIndicator(
-                            icon: Icons.mic_rounded,
-                            label: isResolved
-                                ? 'Recording Saved'
-                                : l10n.recordingActive,
-                            isActive: !isResolved && sosState.isAudioRecording,
-                            activeColor: AppColors.primaryPurple,
+                        const SizedBox(width: 8),
+                        Text(
+                          isResolved ? 'INCIDENT RESOLVED' : 'EMERGENCY BEACON ACTIVE',
+                          style: IosTypography.headline(
+                            color: primaryTextColor,
+                            weight: FontWeight.w800,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
-
-                    // Live Status Progression Steps
+                    const SizedBox(height: 8),
                     Text(
-                      'Emergency Response Lifecycle',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimaryLight,
-                      ),
+                      isResolved
+                          ? 'Police confirmed all safety measures are complete.'
+                          : 'Live GPS breadcrumbs streaming every 5s to District Police',
+                      textAlign: TextAlign.center,
+                      style: IosTypography.subhead(color: secondaryTextColor),
                     ),
-                    const SizedBox(height: 14),
 
-                    _StatusStep(
-                      stepNumber: 1,
-                      title: l10n.statusAlertSent,
-                      subtitle: 'GPS coordinates and emergency SMS dispatched',
-                      isCompleted: isAlertSent,
-                      isCurrent: status == 'triggered',
-                    ),
-                    _StatusStep(
-                      stepNumber: 2,
-                      title: l10n.statusPoliceNotified,
-                      subtitle: 'Transmitted to Ghaziabad Control Room live feed',
-                      isCompleted: isPoliceNotified,
-                      isCurrent: status == 'police_notified',
-                    ),
-                    _StatusStep(
-                      stepNumber: 3,
-                      title: isAssigned
-                          ? 'Help is on the way: ${alert?.assignedUnitName ?? 'Assigned Unit'}'
-                          : l10n.statusHelpAssigned,
-                      subtitle: isAssigned
-                          ? 'Officer contact: ${alert?.assignedOfficerPhone ?? 'Assigned Officer'}'
-                          : 'Nearest patrol vehicle assigned to your coordinates',
-                      isCompleted: isAssigned || isResolved,
-                      isCurrent: status == 'assigned',
-                      highlight: isAssigned,
-                    ),
-                    _StatusStep(
-                      stepNumber: 4,
-                      title: l10n.statusResolved,
-                      subtitle: 'Safety verified and logged in district control record',
-                      isCompleted: isResolved,
-                      isCurrent: isResolved,
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryPurple.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: AppColors.primaryPurple.withOpacity(0.2)),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.info_outline_rounded,
-                              size: 18, color: AppColors.primaryPurple),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              AppConstants.policeIntegrationNotice,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondaryLight,
-                                height: 1.35,
-                              ),
-                            ),
+                    if (sosState.cancelCountdown > 0 && !isResolved) ...[
+                      const SizedBox(height: 18),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.secondarySurfaceDark : AppColors.secondarySurfaceLight,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: separatorColor),
+                        ),
+                        child: Text(
+                          '${l10n.cancelCountdown} ${sosState.cancelCountdown}s (PIN protected)',
+                          style: IosTypography.footnote(
+                            color: primaryTextColor,
+                            weight: FontWeight.w700,
                           ),
-                        ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Active Indicators: Location & Audio
+              Row(
+                children: [
+                  Expanded(
+                    child: _IosLiveIndicator(
+                      icon: CupertinoIcons.location_fill,
+                      label: isResolved ? 'GPS Idle' : l10n.locationSharingLive,
+                      isActive: !isResolved,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _IosLiveIndicator(
+                      icon: CupertinoIcons.mic_fill,
+                      label: isResolved ? 'Recording Saved' : l10n.recordingActive,
+                      isActive: !isResolved && sosState.isAudioRecording,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
+
+              // Emergency Response Lifecycle
+              Text(
+                'Response Lifecycle',
+                style: IosTypography.title3(color: primaryTextColor),
+              ),
+              const SizedBox(height: 14),
+
+              Container(
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: separatorColor.withOpacity(0.5), width: 0.5),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Column(
+                    children: [
+                      _IosStatusStep(
+                        stepNumber: 1,
+                        title: l10n.statusAlertSent,
+                        subtitle: 'GPS coordinates and emergency SMS dispatched',
+                        isCompleted: isAlertSent,
+                        isCurrent: status == 'triggered',
+                      ),
+                      Divider(height: 0.5, thickness: 0.5, indent: 56, color: separatorColor),
+                      _IosStatusStep(
+                        stepNumber: 2,
+                        title: l10n.statusPoliceNotified,
+                        subtitle: 'Transmitted to Ghaziabad Control Room live feed',
+                        isCompleted: isPoliceNotified,
+                        isCurrent: status == 'police_notified',
+                      ),
+                      Divider(height: 0.5, thickness: 0.5, indent: 56, color: separatorColor),
+                      _IosStatusStep(
+                        stepNumber: 3,
+                        title: isAssigned
+                            ? 'Patrol Assigned: ${alert?.assignedUnitName ?? 'Unit'}'
+                            : l10n.statusHelpAssigned,
+                        subtitle: isAssigned
+                            ? 'Officer contact: ${alert?.assignedOfficerPhone ?? 'Assigned Officer'}'
+                            : 'Nearest patrol unit assigned to coordinates',
+                        isCompleted: isAssigned || isResolved,
+                        isCurrent: status == 'assigned',
+                      ),
+                      Divider(height: 0.5, thickness: 0.5, indent: 56, color: separatorColor),
+                      _IosStatusStep(
+                        stepNumber: 4,
+                        title: l10n.statusResolved,
+                        subtitle: 'Safety verified and logged in district control record',
+                        isCompleted: isResolved,
+                        isCurrent: isResolved,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // ERSS Complement Notice
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.secondarySurfaceDark : AppColors.secondarySurfaceLight,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: separatorColor),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(CupertinoIcons.info_circle_fill, size: 18, color: primaryTextColor),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        AppConstants.policeIntegrationNotice,
+                        style: IosTypography.caption1(
+                          color: secondaryTextColor,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-
-              // Bottom Cancel / Done action button
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: isResolved
-                    ? ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.safeGreen,
-                        ),
-                        onPressed: () => context.go('/citizen'),
-                        child: const Text('Back to Home'),
-                      )
-                    : OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.sosRed,
-                          side: const BorderSide(color: AppColors.sosRed, width: 2),
-                        ),
-                        icon: const Icon(Icons.lock_reset_rounded),
-                        label: Text(l10n.cancelAlertButton),
-                        onPressed: () => _showCancelDialog(context, ref),
-                      ),
               ),
             ],
           ),
@@ -294,49 +266,51 @@ class SosActiveScreen extends ConsumerWidget {
   }
 }
 
-class _LiveIndicator extends StatelessWidget {
+class _IosLiveIndicator extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool isActive;
-  final Color activeColor;
 
-  const _LiveIndicator({
+  const _IosLiveIndicator({
     required this.icon,
     required this.label,
     required this.isActive,
-    required this.activeColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: isActive ? activeColor.withOpacity(0.08) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isActive ? activeColor : AppColors.dividerLight,
-          width: isActive ? 1.5 : 1,
+          color: isActive
+              ? (isDark ? Colors.white : Colors.black)
+              : (isDark ? AppColors.separatorDark : AppColors.separatorLight),
+          width: isActive ? 1.5 : 0.8,
         ),
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isActive ? activeColor : AppColors.textHintLight,
-            ),
-            child: Icon(icon, color: Colors.white, size: 16),
+          Icon(
+            icon,
+            size: 16,
+            color: isActive ? primaryTextColor : secondaryTextColor,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: isActive ? activeColor : AppColors.textHintLight,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: IosTypography.footnote(
+                color: isActive ? primaryTextColor : secondaryTextColor,
+                weight: isActive ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ),
@@ -346,90 +320,106 @@ class _LiveIndicator extends StatelessWidget {
   }
 }
 
-class _StatusStep extends StatelessWidget {
+class _IosStatusStep extends StatelessWidget {
   final int stepNumber;
   final String title;
   final String subtitle;
   final bool isCompleted;
   final bool isCurrent;
-  final bool highlight;
 
-  const _StatusStep({
+  const _IosStatusStep({
     required this.stepNumber,
     required this.title,
     required this.subtitle,
     required this.isCompleted,
     required this.isCurrent,
-    this.highlight = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    Color stepColor;
-    if (isCompleted) {
-      stepColor = AppColors.safeGreen;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
+
+    Widget indicator;
+    if (isCompleted && !isCurrent) {
+      indicator = Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.primaryActionDark : AppColors.primaryActionLight,
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          CupertinoIcons.checkmark,
+          size: 14,
+          color: isDark ? AppColors.onPrimaryActionDark : AppColors.onPrimaryActionLight,
+        ),
+      );
     } else if (isCurrent) {
-      stepColor = AppColors.primaryPurple;
+      indicator = Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isDark ? Colors.white : Colors.black,
+            width: 2.5,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          '$stepNumber',
+          style: IosTypography.caption1(
+            color: primaryTextColor,
+            weight: FontWeight.w800,
+          ),
+        ),
+      );
     } else {
-      stepColor = AppColors.textHintLight;
+      indicator = Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+            width: 1.5,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          '$stepNumber',
+          style: IosTypography.caption1(color: secondaryTextColor),
+        ),
+      );
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: highlight
-            ? AppColors.safeGreenLight
-            : (isCurrent ? AppColors.primaryPurpleSurface : Colors.white),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: highlight
-              ? AppColors.safeGreen
-              : (isCurrent ? AppColors.primaryPurple : AppColors.dividerLight),
-          width: isCurrent || highlight ? 1.5 : 1,
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: stepColor,
-            child: isCompleted
-                ? const Icon(Icons.check, size: 16, color: Colors.white)
-                : Text(
-                    '$stepNumber',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-          ),
-          const SizedBox(width: 12),
+          indicator,
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: highlight
-                        ? AppColors.safeGreenDark
-                        : (isCurrent
-                            ? AppColors.primaryPurpleDark
-                            : AppColors.textPrimaryLight),
+                  style: IosTypography.body(
+                    color: primaryTextColor,
+                    weight: isCurrent ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondaryLight,
-                  ),
+                  style: IosTypography.footnote(color: secondaryTextColor),
                 ),
               ],
             ),

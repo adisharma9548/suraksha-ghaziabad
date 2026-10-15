@@ -1,11 +1,16 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/l10n/app_localizations.dart';
-import '../../../data/providers/trip_provider.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/ios_typography.dart';
+import '../../../core/widgets/ios_widgets.dart';
 import '../../../data/providers/auth_provider.dart';
+import '../../../data/providers/trip_provider.dart';
 
+/// Native iOS Trip Sharing Screen
+/// Complies with Apple HIG, grouped insets, SF Pro typography, and color-blind accessibility.
 class TripSharingScreen extends ConsumerStatefulWidget {
   const TripSharingScreen({super.key});
 
@@ -35,13 +40,22 @@ class _TripSharingScreenState extends ConsumerState<TripSharingScreen> {
   Future<void> _handleStartTrip() async {
     final destination = _destinationController.text.trim();
     if (destination.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please specify a destination')),
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Destination Required'),
+          content: const Text('Please enter or select a destination for trip tracking.'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
       );
       return;
     }
 
-    // Default Ghaziabad route start & destination points
     await ref.read(tripProvider.notifier).startTrip(
           destination: destination,
           startLat: 28.6432,
@@ -60,32 +74,59 @@ class _TripSharingScreenState extends ConsumerState<TripSharingScreen> {
     final l10n = AppLocalizations.of(context);
     final contactsAsync = ref.watch(trustedContactsProvider);
     final tripState = ref.watch(tripProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
 
     if (tripState.hasActiveTrip) {
-      // If trip is already active, offer resume button
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.tripSharingTitle)),
+        backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
+        appBar: AppBar(
+          title: Text(l10n.tripSharingTitle, style: IosTypography.headline(color: primaryTextColor)),
+          backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
+          elevation: 0,
+          centerTitle: true,
+        ),
         body: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(28),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.navigation_rounded, size: 64, color: AppColors.primaryPurple),
-                const SizedBox(height: 16),
-                const Text(
-                  'Trip Already In Progress',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceDark : AppColors.secondarySurfaceLight,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      CupertinoIcons.location_north_fill,
+                      size: 38,
+                      color: primaryTextColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Trip In Progress',
+                  style: IosTypography.title2(color: primaryTextColor),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Destination: ${tripState.activeTrip?.destination}',
-                  style: const TextStyle(color: AppColors.textSecondaryLight),
+                  style: IosTypography.subhead(color: secondaryTextColor),
+                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 24),
-                ElevatedButton(
+                const SizedBox(height: 28),
+                IosButton(
+                  text: 'View Active Live Trip',
+                  icon: CupertinoIcons.map_fill,
                   onPressed: () => context.push('/active-trip'),
-                  child: const Text('View Active Live Trip'),
                 ),
               ],
             ),
@@ -95,108 +136,153 @@ class _TripSharingScreenState extends ConsumerState<TripSharingScreen> {
     }
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
       appBar: AppBar(
-        title: Text(l10n.tripSharingTitle),
+        title: Text(l10n.tripSharingTitle, style: IosTypography.headline(color: primaryTextColor)),
+        backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
+        elevation: 0,
+        centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.only(bottom: 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                l10n.tripSharingTitle,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimaryLight,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Share real-time trip progress with emergency contacts. If your vehicle halts unusually or deviates, the app checks if you are OK.',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight, height: 1.35),
-              ),
-              const SizedBox(height: 20),
-
-              // Destination Input
-              TextField(
-                controller: _destinationController,
-                decoration: InputDecoration(
-                  labelText: l10n.enterDestination,
-                  prefixIcon: const Icon(Icons.pin_drop_rounded, color: AppColors.primaryPurple),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Quick preset chips
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _quickDestinations.map((dest) {
-                  return ActionChip(
-                    label: Text(dest, style: const TextStyle(fontSize: 11)),
-                    backgroundColor: Colors.white,
-                    onPressed: () => setState(() => _destinationController.text = dest),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 24),
-
-              // Trusted Contacts who will receive updates
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  Text(
-                    'Contacts to be Notified:',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              // Inset Section 1: Destination
+              IosGroupedSection(
+                header: 'DESTINATION & ROUTE',
+                footer: 'Live GPS breadcrumbs stream to contacts. Automatic safety check-ins occur if vehicle halts.',
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CupertinoTextField(
+                          controller: _destinationController,
+                          placeholder: 'Where are you heading?',
+                          placeholderStyle: IosTypography.callout(color: AppColors.tertiaryTextDark),
+                          style: IosTypography.callout(color: primaryTextColor),
+                          prefix: Padding(
+                            padding: const EdgeInsets.only(left: 12),
+                            child: Icon(
+                              CupertinoIcons.location_solid,
+                              color: primaryTextColor,
+                              size: 18,
+                            ),
+                          ),
+                          clearButtonMode: OverlayVisibilityMode.editing,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.secondarySurfaceDark : AppColors.secondaryBackgroundLight,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text('Quick Presets in Ghaziabad', style: IosTypography.footnote(color: secondaryTextColor)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _quickDestinations.map((dest) {
+                            final isCurrent = _destinationController.text == dest;
+                            return CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              minSize: 32,
+                              onPressed: () => setState(() => _destinationController.text = dest),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isCurrent
+                                      ? primaryTextColor
+                                      : (isDark ? AppColors.surfaceDark : AppColors.secondaryBackgroundLight),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isCurrent
+                                        ? primaryTextColor
+                                        : (isDark ? AppColors.separatorDark : AppColors.separatorLight),
+                                  ),
+                                ),
+                                child: Text(
+                                  dest,
+                                  style: IosTypography.caption1(
+                                    color: isCurrent
+                                        ? (isDark ? Colors.black : Colors.white)
+                                        : primaryTextColor,
+                                    weight: isCurrent ? FontWeight.w600 : FontWeight.w400,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              contactsAsync.when(
-                data: (contacts) {
-                  if (contacts.isEmpty) {
-                    return Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.warningAmberLight,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'No trusted contacts added yet. Go to Profile > Trusted Contacts to add emergency phone numbers.',
-                        style: TextStyle(fontSize: 12, color: AppColors.warningAmberDark),
-                      ),
-                    );
-                  }
-                  return Column(
-                    children: contacts.map((c) {
-                      return ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        leading: CircleAvatar(
-                          radius: 14,
-                          backgroundColor: AppColors.primaryPurpleSurface,
-                          child: const Icon(Icons.person, size: 16, color: AppColors.primaryPurple),
-                        ),
-                        title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                        subtitle: Text('${c.relationship} • ${c.phone}', style: const TextStyle(fontSize: 11)),
-                        trailing: const Icon(Icons.check_circle, size: 16, color: AppColors.safeGreen),
-                      );
-                    }).toList(),
-                  );
-                },
-                loading: () => const CircularProgressIndicator(),
-                error: (_, __) => const Text('Could not load contacts'),
-              ),
-              const SizedBox(height: 32),
 
-              ElevatedButton.icon(
-                icon: const Icon(Icons.security_rounded),
-                label: Text(l10n.startTrip),
-                onPressed: _handleStartTrip,
+              // Inset Section 2: Trusted Contacts
+              IosGroupedSection(
+                header: 'EMERGENCY MONITORS',
+                footer: 'Contacts will receive SMS alerts with your real-time tracking link.',
+                children: [
+                  contactsAsync.when(
+                    data: (contacts) {
+                      if (contacts.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            'No trusted contacts configured. Add contacts in Profile > Trusted Contacts.',
+                            style: IosTypography.footnote(color: secondaryTextColor),
+                          ),
+                        );
+                      }
+                      return Column(
+                        children: contacts.asMap().entries.map((entry) {
+                          final c = entry.value;
+                          final isLast = entry.key == contacts.length - 1;
+                          return IosListTile(
+                            showDivider: !isLast,
+                            leadingIcon: CupertinoIcons.person_crop_circle_badge_checkmark,
+                            title: c.name,
+                            subtitle: '${c.relationship} • ${c.phone}',
+                            trailing: IosBadge(
+                              label: 'Active',
+                              icon: CupertinoIcons.checkmark_alt,
+                              type: IosBadgeType.success,
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    },
+                    loading: () => const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CupertinoActivityIndicator(),
+                    ),
+                    error: (_, __) => Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text('Failed to load contacts', style: IosTypography.footnote(color: secondaryTextColor)),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 20),
+
+              const SizedBox(height: 24),
+
+              // Start Trip Button
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: IosButton(
+                  text: l10n.startTrip,
+                  icon: CupertinoIcons.shield_fill,
+                  onPressed: _handleStartTrip,
+                ),
+              ),
             ],
           ),
         ),

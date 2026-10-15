@@ -20,6 +20,10 @@ class DateFormatter {
     }
   }
 
+  static String formatRelative(DateTime dateTime) {
+    return formatDateTime(dateTime);
+  }
+
   static String formatTime(DateTime dateTime) {
     return DateFormat('h:mm a').format(dateTime);
   }

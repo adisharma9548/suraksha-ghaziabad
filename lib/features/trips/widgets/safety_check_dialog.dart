@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/ios_typography.dart';
 
+/// Native iOS Safety Check-in Dialog
+/// Apple HIG Cupertino modal with tactile haptics, countdown indicator, and accessible multi-cue choices.
 class SafetyCheckDialog extends StatelessWidget {
   final int secondsRemaining;
   final VoidCallback onIAmSafe;
@@ -19,67 +21,51 @@ class SafetyCheckDialog extends StatelessWidget {
     HapticFeedback.heavyImpact();
 
     return WillPopScope(
-      onWillPop: () async => false, // Cannot dismiss without answering
-      child: AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        backgroundColor: Colors.white,
+      onWillPop: () async => false,
+      child: CupertinoAlertDialog(
         title: Row(
-          children: const [
-            Icon(Icons.health_and_safety_rounded, color: AppColors.warningAmberDark, size: 28),
-            SizedBox(width: 10),
-            Text('Are you OK?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              'Your vehicle appears stationary or off-route. Please confirm your safety.',
-              style: TextStyle(fontSize: 13, color: AppColors.textPrimaryLight, height: 1.35),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.sosRedLight,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.sosRed.withOpacity(0.4)),
-              ),
-              child: Text(
-                'Auto-alerting emergency contacts in: ${secondsRemaining}s',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.sosRedDark,
-                ),
-              ),
-            ),
+            const Icon(CupertinoIcons.question_diamond_fill, size: 22),
+            const SizedBox(width: 8),
+            Text('Are you OK?', style: IosTypography.headline()),
           ],
         ),
-        actions: [
-          Row(
+        content: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.sosRed,
-                    side: const BorderSide(color: AppColors.sosRed, width: 1.5),
-                  ),
-                  onPressed: onTriggerSos,
-                  child: const Text('TRIGGER SOS'),
-                ),
+              Text(
+                'Vehicle appears stationary or off-route. Please confirm your safety.',
+                style: IosTypography.subhead(),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.safeGreen,
-                  ),
-                  onPressed: onIAmSafe,
-                  child: const Text('I AM SAFE'),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(width: 1.5),
+                ),
+                child: Text(
+                  'Auto-dispatching alert in ${secondsRemaining}s',
+                  style: IosTypography.footnote(weight: FontWeight.w700),
                 ),
               ),
             ],
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: onTriggerSos,
+            child: const Text('TRIGGER SOS'),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: onIAmSafe,
+            child: const Text('I AM SAFE'),
           ),
         ],
       ),

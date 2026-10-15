@@ -1,10 +1,14 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/l10n/app_localizations.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/ios_typography.dart';
+import '../../../core/widgets/ios_widgets.dart';
 import '../../../data/providers/auth_provider.dart';
 
+/// Native iOS Officer Login Screen
 class OfficerLoginScreen extends ConsumerStatefulWidget {
   const OfficerLoginScreen({super.key});
 
@@ -28,8 +32,18 @@ class _OfficerLoginScreenState extends ConsumerState<OfficerLoginScreen> {
     final pin = _pinController.text.trim();
 
     if (code.isEmpty || pin.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your Officer Code and PIN')),
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Missing Credentials'),
+          content: const Text('Please enter both your Officer Identification Code and PIN.'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
       );
       return;
     }
@@ -40,10 +54,17 @@ class _OfficerLoginScreenState extends ConsumerState<OfficerLoginScreen> {
       context.go('/officer');
     } else if (mounted) {
       final error = ref.read(authProvider).errorMessage ?? 'Invalid officer credentials';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Authentication Failed'),
           content: Text(error),
-          backgroundColor: AppColors.sosRed,
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
         ),
       );
     }
@@ -53,12 +74,20 @@ class _OfficerLoginScreenState extends ConsumerState<OfficerLoginScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final authState = ref.watch(authProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
       appBar: AppBar(
-        title: Text(l10n.officerPortal),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+        title: Text(l10n.officerPortal, style: IosTypography.headline(color: primaryTextColor)),
+        backgroundColor: isDark ? AppColors.backgroundDark : AppColors.secondaryBackgroundLight,
+        elevation: 0,
+        centerTitle: true,
+        leading: CupertinoButton(
+          padding: EdgeInsets.zero,
+          child: Icon(CupertinoIcons.chevron_left, color: primaryTextColor),
           onPressed: () => context.go('/login'),
         ),
       ),
@@ -68,107 +97,113 @@ class _OfficerLoginScreenState extends ConsumerState<OfficerLoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               Center(
                 child: Container(
-                  width: 90,
-                  height: 90,
-                  decoration: const BoxDecoration(
-                    color: AppColors.policeNavySurface,
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceDark : AppColors.secondarySurfaceLight,
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.badge_rounded,
-                    size: 48,
-                    color: AppColors.policeNavy,
+                  child: Center(
+                    child: Icon(
+                      CupertinoIcons.shield_fill,
+                      size: 40,
+                      color: primaryTextColor,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'District Police & Admin Control',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.policeNavy,
-                ),
+                style: IosTypography.title2(color: primaryTextColor),
               ),
-              const SizedBox(height: 6),
-              const Text(
+              const SizedBox(height: 4),
+              Text(
                 'Authorized Police Personnel & Control Room Access',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondaryLight,
-                ),
+                style: IosTypography.footnote(color: secondaryTextColor),
               ),
               const SizedBox(height: 28),
 
               // Security notice banner
-              Container(
+              IosCard(
                 padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.policeNavySurface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: AppColors.policeNavy.withOpacity(0.3),
-                  ),
-                ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.security_rounded, color: AppColors.policeNavy, size: 20),
-                    SizedBox(width: 10),
+                    Icon(CupertinoIcons.lock_fill, size: 18, color: primaryTextColor),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'Restricted Access: Authorized credentials issued by Ghaziabad District Police Administration.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.policeNavy,
-                        ),
+                        style: IosTypography.caption1(color: secondaryTextColor),
                       ),
                     ),
                   ],
                 ),
               ),
+
               const SizedBox(height: 24),
 
-              TextField(
+              // Officer Code Input
+              CupertinoTextField(
                 controller: _codeController,
                 textCapitalization: TextCapitalization.characters,
-                decoration: InputDecoration(
-                  labelText: l10n.officerCode,
-                  prefixIcon: const Icon(Icons.person_pin_rounded, color: AppColors.policeNavy),
+                placeholder: 'Officer Identification Code',
+                placeholderStyle: IosTypography.callout(color: AppColors.tertiaryTextDark),
+                style: IosTypography.callout(color: primaryTextColor),
+                prefix: Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: Icon(CupertinoIcons.person_badge_plus_fill, size: 18, color: primaryTextColor),
+                ),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
 
-              TextField(
+              const SizedBox(height: 14),
+
+              // Officer PIN Input
+              CupertinoTextField(
                 controller: _pinController,
-                obscureText: true,
                 keyboardType: TextInputType.number,
-                maxLength: 6,
-                decoration: InputDecoration(
-                  labelText: l10n.officerPin,
-                  prefixIcon: const Icon(Icons.lock_rounded, color: AppColors.policeNavy),
-                  counterText: '',
+                obscureText: true,
+                maxLength: 4,
+                placeholder: '4-Digit Officer Access PIN',
+                placeholderStyle: IosTypography.callout(color: AppColors.tertiaryTextDark),
+                style: IosTypography.callout(color: primaryTextColor),
+                prefix: Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: Icon(CupertinoIcons.lock_fill, size: 18, color: primaryTextColor),
+                ),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                  ),
                 ),
               ),
+
               const SizedBox(height: 24),
 
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.policeNavy,
-                ),
-                onPressed: authState.isLoading ? null : _handleOfficerLogin,
-                child: authState.isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
-                    : Text(l10n.loginAsOfficer),
+              IosButton(
+                text: l10n.loginAsOfficer,
+                icon: CupertinoIcons.arrow_right_circle_fill,
+                isLoading: authState.isLoading,
+                onPressed: _handleOfficerLogin,
               ),
             ],
           ),

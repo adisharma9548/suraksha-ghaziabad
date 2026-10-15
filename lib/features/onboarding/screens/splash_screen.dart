@@ -1,10 +1,14 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/ios_typography.dart';
 import '../../../data/providers/repository_providers.dart';
 
+/// Native iOS Splash Screen
+/// Apple HIG minimalist launch presentation with restrained spring animation and greyscale tokens.
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
@@ -23,11 +27,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 1000),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOutBack),
+    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -39,7 +43,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _checkNextScreen() async {
-    await Future.delayed(const Duration(milliseconds: 2000));
+    await Future.delayed(const Duration(milliseconds: 1800));
     if (!mounted) return;
 
     final prefs = ref.read(sharedPreferencesProvider);
@@ -67,8 +71,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? AppColors.primaryTextDark : AppColors.primaryTextLight;
+    final secondaryTextColor = isDark ? AppColors.secondaryTextDark : AppColors.secondaryTextLight;
+
     return Scaffold(
-      backgroundColor: AppColors.primaryPurple,
+      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
       body: SafeArea(
         child: Center(
           child: Column(
@@ -80,26 +88,37 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 child: FadeTransition(
                   opacity: _fadeAnimation,
                   child: Container(
-                    width: 140,
-                    height: 140,
+                    width: 130,
+                    height: 130,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
+                      color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+                        width: 1.5,
+                      ),
+                      boxShadow: const [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
+                          color: Colors.black12,
                           blurRadius: 20,
-                          offset: const Offset(0, 8),
+                          offset: Offset(0, 8),
                         ),
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(70),
+                      borderRadius: BorderRadius.circular(28),
                       child: Image.asset(
                         'assets/images/app_logo.png',
-                        width: 140,
-                        height: 140,
+                        width: 130,
+                        height: 130,
                         fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Center(
+                          child: Icon(
+                            CupertinoIcons.shield_lefthalf_fill,
+                            size: 56,
+                            color: primaryTextColor,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -110,61 +129,29 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 opacity: _fadeAnimation,
                 child: Column(
                   children: [
-                    const Text(
-                      AppConstants.appName,
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 0.5,
-                      ),
+                    Text(
+                      'Suraksha Ghaziabad',
+                      style: IosTypography.largeTitle(color: primaryTextColor),
                     ),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        AppConstants.appTagline,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white,
-                        ),
-                      ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'आपकी सुरक्षा, हमारी ज़िम्मेदारी',
+                      style: IosTypography.callout(color: secondaryTextColor),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Safe City for Women • UP Police & Nagar Nigam',
+                      style: IosTypography.footnote(color: AppColors.tertiaryTextDark),
                     ),
                   ],
                 ),
               ),
               const Spacer(),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: Column(
-                  children: [
-                    Text(
-                      AppConstants.eventName,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.8),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      AppConstants.eventCategory,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.white.withOpacity(0.6),
-                      ),
-                    ),
-                  ],
-                ),
+              CupertinoActivityIndicator(
+                radius: 12,
+                color: primaryTextColor,
               ),
+              const SizedBox(height: 36),
             ],
           ),
         ),
