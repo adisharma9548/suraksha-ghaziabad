@@ -6,7 +6,7 @@
 > *"Aapki Suraksha, Hamari Zimmedari"*  
 > **Ghaziabad Seva First Innovation Challenge 2026** • Problem Statement: **Safe City for Women**
 
-[![Download APK](https://img.shields.io/badge/Download%20APK-v1.0.0%20(57.3%20MB)-crimson?style=for-the-badge&logo=android)](https://github.com/adisharma9548/suraksha-ghaziabad/raw/main/releases/SurakshaGhaziabad-v1.0.apk)
+[![Download APK](https://img.shields.io/badge/Download%20APK-v1.0.1%20(56.9%20MB)-black?style=for-the-badge&logo=android)](https://github.com/adisharma9548/suraksha-ghaziabad/raw/main/releases/SurakshaGhaziabad-v1.0.1.apk)
 [![Flutter Tests](https://img.shields.io/badge/Flutter%20Tests-18%20Passing-emerald?style=for-the-badge)](test/)
 [![Firebase App Check](https://img.shields.io/badge/App%20Check-Play%20Integrity-blue?style=for-the-badge)](lib/main.dart)
 [![SMS Horizon](https://img.shields.io/badge/SMS%20Gateway-SMS%20Horizon%20DLT-orange?style=for-the-badge)](lib/core/services/sms_service.dart)
@@ -18,12 +18,19 @@
 
 Anyone can immediately download and install the latest compiled production-style APK directly on any Android device:
 
-| File Name | Direct Download Link | Size | Minimum OS |
-| :--- | :--- | :---: | :---: |
-| **SurakshaGhaziabad-v1.0.apk** | [📥 **Download SurakshaGhaziabad-v1.0.apk**](https://github.com/adisharma9548/suraksha-ghaziabad/raw/main/releases/SurakshaGhaziabad-v1.0.apk) | **57.3 MB** | Android 7.0+ (API 24+) |
+| Version | File Name | Direct Download Link | Size | Minimum OS |
+| :---: | :--- | :--- | :---: | :---: |
+| **v1.0.1 (Latest)** | **SurakshaGhaziabad-v1.0.1.apk** | [📥 **Download SurakshaGhaziabad-v1.0.1.apk**](https://github.com/adisharma9548/suraksha-ghaziabad/raw/main/releases/SurakshaGhaziabad-v1.0.1.apk) | **56.9 MB** | Android 7.0+ (API 24+) |
+| v1.0.0 | SurakshaGhaziabad-v1.0.apk | [📥 Download SurakshaGhaziabad-v1.0.apk](https://github.com/adisharma9548/suraksha-ghaziabad/raw/main/releases/SurakshaGhaziabad-v1.0.apk) | 57.3 MB | Android 7.0+ (API 24+) |
 
-> **Repository File Path**: [`releases/SurakshaGhaziabad-v1.0.apk`](releases/SurakshaGhaziabad-v1.0.apk)  
-> **SHA-256 Checksum**: `2C3476B74B8F5DBECFEC568D2E9D9D8910AF43ABFFE73F63381D1FC5FCEA36BD`
+> **Latest Repository File Path**: [`releases/SurakshaGhaziabad-v1.0.1.apk`](releases/SurakshaGhaziabad-v1.0.1.apk)  
+> **SHA-256 Checksum (v1.0.1)**: `9DE21B48C3890A52DFD123DBC2CEF80FC04D93B1BE21144A20126439E16C1433`
+
+### 🆕 What's New in v1.0.1
+- **Native iOS Human Interface Guidelines (HIG) Redesign**: Redesigned all 22 screens with SF Pro typographic scale, native grouped inset lists, Cupertino segmented controls, collapsible navigation headers, and frosted-glass blurred chrome.
+- **Greyscale-First, Color-Blind Safe Architecture**: Meets strict **WCAG AAA** contrast standards (≥7:1 body, ≥12:1 headings) with dark and light palettes.
+- **Multi-Cue State Indicators**: Completely eliminated reliance on color alone. Statuses, warnings, and states are conveyed using icon + bold label + border weight + hatched/patterned visual fills (stripes, dots, crosshatch).
+- **Accessibility Enhancements**: Support for Dynamic Type (scales up to 200%), Reduce Motion, Reduce Transparency, VoiceOver semantic labels, and minimum 44×44pt touch targets.
 
 ### 📋 Installation Steps on Android:
 1. Tap the download link above on your Android phone (or download via Chrome / Files).
